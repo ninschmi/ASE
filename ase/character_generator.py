@@ -106,7 +106,7 @@ for factor_arm in factors_arm:
             print(os.path.exists(path))
             os.makedirs(path)
             print(os.path.exists(path))
-        output_file = 'arm_' + str(factor_arm) + '_leg_' + str(factor_leg) + '.xml'
+        output_file = 'amp_humanoid_sword_shield_arm_' + str(factor_arm).replace(".", "-") + '_leg_' + str(factor_leg).replace(".","-") + '.xml'
         output = path + output_file
         # save all files in new directory
         with open(output, "wb") as f:
