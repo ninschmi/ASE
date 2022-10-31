@@ -14,7 +14,7 @@ filename = 'data/assets/mjcf/amp_humanoid_sword_shield.xml'
 factors_leg = np.array([0.5, 0.75, 1, 1.25, 1.5, 1.75, 2])
 factors_arm = np.array([0.5, 0.75, 1, 1.25, 1.5])
 bodies_arms = np.array(['right_upper_arm', 'right_lower_arm', 'right_hand', 'sword', 'left_upper_arm', 'left_lower_arm', 'shield'])
-bodies_legs = np.array(['right_thigh', 'right_shin', 'right_foot'])
+bodies_legs = np.array(['right_thigh', 'right_shin', 'right_foot', 'left_thigh', 'left_shin', 'left_foot'])
 tags = np.array(['geom'])
 
 for factor_arm in factors_arm:
@@ -28,6 +28,7 @@ for factor_arm in factors_arm:
         value = 'humanoid_' + str(factor_arm) + '_' + str(factor_leg)
         root.set('model', value)
         trans_frames = {}
+        end_points = {}
 
         # modify arms
         for i_arm in bodies_arms:
@@ -42,9 +43,16 @@ for factor_arm in factors_arm:
                 #print('here change pos due to parent')
                 frame_pos_str = body_arm.get('pos')
                 frame_pos_list = frame_pos_str.split(" ")
-                trans_frame = trans_frames[parent]
-                print(trans_frames)
-                frame_pos_list[2] = float(frame_pos_list[2])-trans_frame
+                #trans_frame = trans_frames[parent]
+                # adjust gap btw parent geom and child frame according to scaling
+                gap = []
+                end_old = end_points[parent][0]
+                end_new = end_points[parent][1]
+                for i in range(3):
+                    gap[i] = (frame_pos_list[i]-end_old[i])*factor_arm
+                    frame_pos_list = end_new[i] + gap[i]
+
+                #frame_pos_list[2] = float(frame_pos_list[2])-trans_frame
                 frame_pos_list = [str(x) for x in frame_pos_list]
                 frame_pos_str = ' '.join(frame_pos_list)
                 body_arm.set('pos', frame_pos_str)
@@ -62,10 +70,12 @@ for factor_arm in factors_arm:
                 if modify_tag.get('type')=='sphere':
                     vol_old = 4/3.*np.pi*pow(size,3)    #inital volume used later
                     delta_length = size*factor_arm-size #used for translating child frame
+                    size_old = size
                     size *= factor_arm  
                     vol_new = 4/3.*np.pi*pow(size,3)    #new volume used later     
                     modify_tag.set('size', str(size))       
                     trans_frames[body_arm_str] = delta_length   #translation of body part used for child frames         
+                    end_points[body_arm_str] = [[size_old]*3, [size]*3]
                 else:
                     size_old = size
                     size *= factor_arm
@@ -81,13 +91,14 @@ for factor_arm in factors_arm:
                     dist = abs(start-end)
                     vol_old = (dist-2*size_old)*np.pi*pow(size_old,2) + 4/3.*np.pi*pow(size_old,3)
                     dist *=factor_arm
+                    vol_new = (dist-2*size)*np.pi*pow(size,2) + 4/3.*np.pi*pow(size,3)
                     end_new = start - dist
                     value_list[5] = end_new
                     value_list = [str(x) for x in value_list]
                     new_value = ' '.join(value_list)
                     modify_tag.set('fromto', new_value)
-                    trans_frames[body_arm_str] = end_new - end   #translation of body part used for child frames
-                    vol_new = (dist-2*size)*np.pi*pow(size,2) + 4/3.*np.pi*pow(size,3)
+                    trans_frames[body_arm_str] =  end - end_new #translation of body part used for child frames
+                    end_points[body_arm_str] = [end, end_new]
                 
                 # change geom density attrib; change mass prop to volume increase, recalculate neccessary density
                 #print('here geom density')
@@ -156,7 +167,7 @@ for factor_arm in factors_arm:
                     value_list = [str(x) for x in value_list]
                     new_value = ' '.join(value_list)
                     modify_tag.set('fromto', new_value)
-                    trans_frames[body_leg_str] = end_new - end   #translation of body part used for child frames
+                    trans_frames[body_leg_str] = end - end_new  #translation of body part used for child frames
                     vol_new = (dist-2*size)*np.pi*pow(size,2) + 4/3.*np.pi*pow(size,3)
 
                 # change geom density attrib; change mass prop to volume increase, recalculate neccessary density
@@ -167,25 +178,7 @@ for factor_arm in factors_arm:
                 density = mass/vol_new
                 modify_tag.set('density', str(density))          
                             
-        # change site pos attrib
-        #print('here site pos leg')
-        #size_site = modify_tag.get('size')
-        #size_site_list = size_site.split(" ")
-        #half_height = float(size_site_list[1])*factor_leg # only scale half-length of capsule (second value), leave radius (first value; := size val in geom) as for geom unchanged
-        #old_length = 2*float(size_site_list[1])
-        #new_length = 2*half_height
-        ## shift pos of size prop to delta length while keeping position relative to geom constant
-        #pos_site = modify_tag.get('pos')
-        #pos_site_list = pos_site.split(" ")
-        #ratio = abs(float(pos_site_list[2])-start)/old_length
-        #pos_site_new = start - ratio*new_length
-        #ratio_new = abs(pos_site_new-start)/new_length
-        #print("ration before leg: " + str(ratio))
-        #print("ration after leg: " + str(ratio_new))
-        #pos_site_list[2] = pos_site_new
-        #pos_site_list = [str(x) for x in pos_site_list]
-        #pos_site = ' '.join(pos_site_list)
-        #modify_tag.set('pos', pos_site)
+        #change distance to 
 
         # generate new mujoco file for each arm and leg modification
         path = 'data/assets/mjcf/arm_leg_parametrization/'
