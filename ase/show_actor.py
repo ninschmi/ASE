@@ -53,6 +53,7 @@ elif args.physics_engine == gymapi.SIM_PHYSX:
     sim_params.physx.use_gpu = args.use_gpu
     #sim_params.physx.num_subscenes = args.subscenes
     #sim_params.physx.max_gpu_contact_pairs = 8 * 1024 * 1024
+    sim_params.gravity = gymapi.Vec3(0.0,0.0,-9.8)
 
 sim_params.use_gpu_pipeline = False
 #sim_params.use_gpu_pipeline = args.use_gpu_pipeline
@@ -132,13 +133,8 @@ for i, asset in enumerate(assets):
     
     # add actor
     pose = gymapi.Transform()
-    pose.p = gymapi.Vec3(pose_list[0], pose_list[1], (pose_list[2]))
+    pose.p = gymapi.Vec3(pose_list[0], pose_list[1], (pose_list[2]/1*0.89))
     pose.r = gymapi.Quat(0.0, 0.0, 0.0, 1.0)
-    #pose.r = gymapi.Quat(-0.707107, 0.0, 0.0, 0.707107)
-    #pose.p = gymapi.Vec3(0.0, 2, 0.0)
-    #pose.r = gymapi.Quat(-0.707107, 0.0, 0.0, 0.707107)
-
-    print(pose.p)
 
     actor_handle = gym.create_actor(env, asset, pose, "humanoid", i, 1)
     actor_handles.append(actor_handle)
