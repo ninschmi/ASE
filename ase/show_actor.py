@@ -26,8 +26,42 @@ class AssetDesc:
 
 
 asset_descriptors = [
-    AssetDesc("data/assets/mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_2-0.xml", False),
-    #AssetDesc("data/assets/mjcf/amp_humanoid_sword_shield.xml", False),
+    #AssetDesc("amp_humanoid_sword_shield.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_0-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_0-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_1-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_1-25.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_1-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_1-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_2-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-75_leg_0-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-75_leg_0-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-75_leg_1-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-75_leg_1-25.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-75_leg_1-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-75_leg_1-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-75_leg_2-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-0_leg_0-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-0_leg_0-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-0_leg_1-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-0_leg_1-25.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-0_leg_1-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-0_leg_1-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-0_leg_2-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-25_leg_0-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-25_leg_0-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-25_leg_1-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-25_leg_1-25.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-25_leg_1-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-25_leg_1-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-25_leg_2-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-5_leg_0-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-5_leg_0-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-5_leg_1-0.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-5_leg_1-25.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-5_leg_1-5.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-5_leg_1-75.xml", False),
+    AssetDesc("arm_leg_parametrization/amp_humanoid_sword_shield_arm_1-5_leg_2-0.xml", False),
 ]
 
 with open('data/cfg/humanoid_ase_sword_shield_getup.yaml', 'r') as f:
@@ -84,15 +118,17 @@ if viewer is None:
     quit()
 
 # load asset
-asset_root = "data/assets/mjcf/arm_leg_parametrization/"
-asset_file = "amp_humanoid_sword_shield_arm_0-5_leg_2-0.xml"
+#asset_root = "data/assets/mjcf/arm_leg_parametrization/"
+#asset_file = "amp_humanoid_sword_shield_arm_0-5_leg_2-0.xml"
 
-#asset_root = "data/assets/mjcf/"
+asset_root = "data/assets/mjcf/"
 #asset_file = "amp_humanoid_sword_shield.xml"
 
 assets = []
 for asset_desc in asset_descriptors:
-    #asset_file = asset_desc.file_name
+    # load asset
+    #asset_root = "data/assets/mjcf/"
+    asset_file = asset_desc.file_name
 
     asset_options = gymapi.AssetOptions()
     asset_options.fix_base_link = True
@@ -119,15 +155,19 @@ gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
 envs = []
 actor_handles = []
 
+num_envs = 35
+
+num_per_row = 7
+
 
 for i, asset in enumerate(assets):
 
     # create env
-    env = gym.create_env(sim, env_lower, env_upper, 1)
+    env = gym.create_env(sim, env_lower, env_upper, num_per_row)
     envs.append(env)
 
     # determine position
-    pose_string = et.parse(asset_desc.file_name).getroot().find('.//body[@name="pelvis"]').get('pos')
+    pose_string = et.parse(asset_root+asset_descriptors[i].file_name).getroot().find('.//body[@name="pelvis"]').get('pos')
     pose_list = pose_string.split(" ")
     pose_list = [float(x) for x in pose_list]
     

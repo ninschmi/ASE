@@ -137,9 +137,9 @@ for factor_arm in factors_arm:
                 bframe_str = body_arm.get('pos')
                 bframe_list = bframe_str.split(" ")
                 if 'right' in body_arm_str:
-                    dir = 1
-                else:
                     dir = -1
+                else:
+                    dir = +1
                 bframe_list = [str(float(x)+translation[body_arm_str][i]*dir) for i,x in enumerate(bframe_list)]
                 bframe_str = ' '.join(bframe_list)
                 body_arm.set('pos', bframe_str)
