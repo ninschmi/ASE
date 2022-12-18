@@ -69,8 +69,18 @@ class HumanoidAMPGetup(HumanoidAMP):
 
     def _generate_fall_states(self):
         max_steps = 150
-        
-        env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
+        # first try to generate random poses from base character and transform them when reset (but hard to find scale factor)
+        ##if self.randomize:
+        ##    # find envs with base character to generate fall states from this and adjust for scale when character put into state
+        ##    base_envs = np.where(np.array(self.env_char_mapping)[np.arange(0,self.num_envs)] == self.base_char_idx)
+        ##    env_ids = base_envs
+        ##else:
+        ##    # generate fall states with all envs
+        ##    env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
+        if self.randomize:
+            env_ids = to_torch(np.arange(self.num_chars*self.envs_per_file), device=self.device, dtype=torch.long)
+        else:
+            env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
         root_states = self._initial_humanoid_root_states[env_ids].clone()
         root_states[..., 3:7] = torch.randn_like(root_states[..., 3:7])
         root_states[..., 3:7] = torch.nn.functional.normalize(root_states[..., 3:7], dim=-1)
@@ -95,11 +105,17 @@ class HumanoidAMPGetup(HumanoidAMP):
             self.gym.simulate(self.sim)
             
         self._refresh_sim_tensors()
-        
-        self._fall_root_states = self._humanoid_root_states.clone()
+
+        self._fall_root_states = self._humanoid_root_states[env_ids].clone()
+        self._fall_dof_pos = self._dof_pos[env_ids].clone()
         self._fall_root_states[:, 7:13] = 0
-        self._fall_dof_pos = self._dof_pos.clone()
-        self._fall_dof_vel = torch.zeros_like(self._dof_vel, device=self.device, dtype=torch.float)
+
+        if self.randomize:
+            # generate multiple fall root states (#env_per_char) for each character
+            self._fall_root_states = self._fall_root_states.view(self.num_chars, self.envs_per_file, 13)
+            self._fall_dof_pos = self._fall_dof_pos.view(self.num_chars, self.envs_per_file, 31)
+        
+        self._fall_dof_vel = torch.zeros_like(self._fall_dof_pos, device=self.device, dtype=torch.float)
 
         return
 
@@ -135,12 +151,98 @@ class HumanoidAMPGetup(HumanoidAMP):
         return
     
     def _reset_fall_episode(self, env_ids):
-        fall_state_ids = torch.randint_like(env_ids, low=0, high=self._fall_root_states.shape[0])
-        self._humanoid_root_states[env_ids] = self._fall_root_states[fall_state_ids]
-        self._dof_pos[env_ids] = self._fall_dof_pos[fall_state_ids]
-        self._dof_vel[env_ids] = self._fall_dof_vel[fall_state_ids]
+        if self.randomize:
+            fall_state_ids = torch.randint_like(env_ids, low=0, high=self._fall_root_states.shape[1])
+            fall_root_states = self._fall_root_states[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
+            dof_pos = self._fall_dof_pos[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
+            dof_vel = self._fall_dof_vel[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
+        else:
+            fall_state_ids = torch.randint_like(env_ids, low=0, high=self._fall_root_states.shape[0])
+            fall_root_states = self._fall_root_states[fall_state_ids]
+            dof_pos = self._fall_dof_pos[fall_state_ids]
+            dof_vel = self._fall_dof_vel[fall_state_ids]
+        #if self.randomize:
+        #    #make sure character is placed correctly by scaling z component of _fall_root_state by leg's scale factor
+        #    test_0 = to_torch(self._scale_leg, device=self.device)
+        #    test_1 = to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]
+        #    scale_leg_for_envs = to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
+        #    test_3 = fall_root_states[:,2]
+        #    test_4 = torch.mul(fall_root_states[:,2],scale_leg_for_envs)
+        #    fall_root_states[:,2] = torch.mul(fall_root_states[:,2],scale_leg_for_envs)
+
+        self._humanoid_root_states[env_ids] = fall_root_states
+        self._dof_pos[env_ids] = dof_pos
+        self._dof_vel[env_ids] = dof_vel
+        #self._humanoid_root_states[env_ids] = self._fall_root_states[fall_state_ids]
+        #self._dof_pos[env_ids] = self._fall_dof_pos[fall_state_ids]
+        #self._dof_vel[env_ids] = self._fall_dof_vel[fall_state_ids]
         self._recovery_counter[env_ids] = self._recovery_steps
         self._reset_fall_env_ids = env_ids
+
+        ##if self.randomize:
+        ##    #avoid jumps
+        ##    #right_hand, sword, left_hand
+        ##    #bodies_sizes = [0.04, 0.11, 0.04]
+        ##    root_rot_expanded = self._humanoid_root_states[env_ids, 3:7].unsqueeze(-2)
+        ##    root_rot_expanded = root_rot_expanded.repeat((1, self._rigid_body_pos.shape[1], 1))
+        ##    new_rigid_body_pos_l = quat_rotate(root_rot_expanded.view(root_rot_expanded.shape[0]*root_rot_expanded.shape[1], root_rot_expanded.shape[2]),self._rigid_body_pos[env_ids,:,:].view(self._rigid_body_pos[env_ids].shape[0]*self._rigid_body_pos[env_ids].shape[1], self._rigid_body_pos[env_ids].shape[2]))
+        ##    new_rigid_body_pos_l = new_rigid_body_pos_l.view(self._rigid_body_pos[env_ids].shape[0],self._rigid_body_pos.shape[1], self._rigid_body_pos.shape[2] )
+        ##    difference = self._humanoid_root_states[env_ids, 2] - new_rigid_body_pos_l[:,0,2]
+        ##    difference_expanded = difference.unsqueeze(-1)
+        ##    new_rigid_body_pos = new_rigid_body_pos_l[:,:,2] + difference_expanded
+        ##    test_0 = torch.min(new_rigid_body_pos, dim=1).values
+        ##    index = torch.min(new_rigid_body_pos, dim=1).indices
+        ##    test_01 = torch.zeros_like(test_0)
+        ##    test_1 = torch.gt(torch.zeros_like(test_0),torch.min(new_rigid_body_pos, dim=1).values)
+        ##    test_2 = torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(new_rigid_body_pos, dim=1).values))
+        ##    if torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(new_rigid_body_pos, dim=1).values))>0:
+        ##        test_4 = torch.clamp_max(torch.min(new_rigid_body_pos, dim=1).values, max=0)
+        ##        self._humanoid_root_states[env_ids, 2] -= torch.clamp_max(torch.min(new_rigid_body_pos, dim=1).values, max=0)
+##
+        ##    env_ids_int32 = self._humanoid_actor_ids[env_ids]
+        ##    self.gym.set_actor_root_state_tensor_indexed(self.sim,
+        ##                                                 gymtorch.unwrap_tensor(self._root_states),
+        ##                                                 gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+        ##    self.render()
+        ##    self.gym.simulate(self.sim)
+        ##    self.render()
+        ##    self.gym.simulate(self.sim)
+##
+
+        ##    new_diff = new_rigid_body_pos_l[:,:,2] + self._humanoid_root_states[env_ids, 2].unsqueeze(-1)
+
+            #env_ids_int32 = self._humanoid_actor_ids[env_ids]
+            #self.gym.set_actor_root_state_tensor_indexed(self.sim,
+            #                                             gymtorch.unwrap_tensor(self._root_states),
+            #                                             gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+#   
+            #self.gym.refresh_actor_root_state_tensor(self.sim)
+            #self.gym.refresh_rigid_body_state_tensor(self.sim)
+#   
+            #test_0 = torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values
+            #test_1 = torch.gt(torch.zeros_like(test_0),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values)
+            #test_2 = torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values))>0
+            #if torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values))>0:
+            #    correction = torch.clamp_min(torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values, min=0)
+
+
+            #new_root_pos = quat_rotate(self._humanoid_root_states[env_ids, 3:7], self._rigid_body_pos[env_ids,0,:])
+            #if torch.sum(torch.gt(new_root_pos[:,2], self._humanoid_root_states[env_ids,2]))>0:
+            #    correction = new_root_pos[:,2] - self._humanoid_root_states[env_ids,2]
+            #    self._humanoid_root_states[env_ids,2] += correction
+
+            #test_0=self._rigid_body_pos[env_ids,0,2]
+            #test_1=self._humanoid_root_states[env_ids,2]
+            #test_2=torch.gt(self._rigid_body_pos[env_ids,0,2],self._humanoid_root_states[env_ids,2])
+            #test_3=torch.sum(torch.gt(self._rigid_body_pos[env_ids,0,2],self._humanoid_root_states[env_ids,2]))
+            #if torch.sum(torch.gt(self._rigid_body_pos[env_ids,0,2],self._humanoid_root_states[env_ids,2]))>0:
+            #    correction = self._rigid_body_pos[env_ids,0,2] - self._humanoid_root_states[env_ids,2]
+            #    scale = to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
+            #    self._humanoid_root_states[env_ids,2] += correction + 0.89 * to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
+
+        ##    x_0 = self._rigid_body_pos[env_ids,0,2]
+        ##    x_1 = self._humanoid_root_states[env_ids,2]
+
         return
     
     def _reset_envs(self, env_ids):

@@ -29,6 +29,7 @@
 from enum import Enum
 import numpy as np
 import torch
+import os
 
 from isaacgym import gymapi
 from isaacgym import gymtorch
@@ -114,7 +115,7 @@ class HumanoidAMP(Humanoid):
 
         motion_ids = motion_ids.view(-1)
         motion_times = motion_times.view(-1)
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos, local_rot \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
         amp_obs_demo = build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel,
                                               dof_pos, dof_vel, key_pos,
@@ -130,11 +131,14 @@ class HumanoidAMP(Humanoid):
         super()._setup_character_props(key_bodies)
 
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
+        asset_path = "ase/data/assets/" + asset_file
         num_key_bodies = len(key_bodies)
 
         if (asset_file == "mjcf/amp_humanoid.xml"):
             self._num_amp_obs_per_step = 13 + self._dof_obs_size + 28 + 3 * num_key_bodies # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
         elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
+            self._num_amp_obs_per_step = 13 + self._dof_obs_size + 31 + 3 * num_key_bodies # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+        elif (os.path.isfile(asset_path)):
             self._num_amp_obs_per_step = 13 + self._dof_obs_size + 31 + 3 * num_key_bodies # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
         else:
             print("Unsupported character config file: {s}".format(asset_file))
@@ -191,8 +195,203 @@ class HumanoidAMP(Humanoid):
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
 
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos, local_rot \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
+
+        if self.randomize:
+
+            # FORWARD KINEMATICS APPROACH
+
+            # check that there is no penetration
+            # compute forward kinematics to get rigid body pos in global coordinates
+            # find global coordinates of rigid body positionst
+
+            # make sure there is an environment with a base character for reference
+            #if not self.base_char_idx in to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]:
+            #    x = self.envs_per_file * self.base_char_idx
+            #    env_ids = torch.cat((env_ids, to_torch([self.envs_per_file * self.base_char_idx], dtype=torch.int)), dim=0)
+
+            # retrieve local translation from mujoco file for forward kinematics
+            local_translations = to_torch(self.local_rigid_body_pos,device=self.device, dtype=torch.float32)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
+                
+            num_bodies = local_rot.shape[1]
+
+            # compute transforms for each rigid body
+            transform_q = torch.empty((num_envs, num_bodies, 4), device=self.device)   # num envs x num rigid bodies x 4 (quaternions)
+            transform_t = torch.empty((num_envs, num_bodies, 3), device=self.device)   # num envs x num rigid bodies x 3 (translation)
+
+            # pelvis aka root
+            transform_q[:,0,:] = root_rot
+            transform_t[:,0,:] = root_pos
+
+            # torso (torso -> pelvis)
+            transform_q[:,1,:], transform_t[:,1,:] = tf_combine(transform_q[:,0,:], transform_t[:,0,:], local_rot[:,1,:], local_translations[:,1,:])
+            # head (head -> torso -> pelvis)
+            transform_q[:,2,:], transform_t[:,2,:] = tf_combine(transform_q[:,1,:], transform_t[:,1,:], local_rot[:,2,:], local_translations[:,2,:])
+            # right upper arm (r_u_arm -> torso -> pelvis)
+            transform_q[:,3,:], transform_t[:,3,:] = tf_combine(transform_q[:,1,:], transform_t[:,1,:], local_rot[:,3,:], local_translations[:,3,:])
+            # right lower arm  (r_l_arm -> r_u_arm -> torso -> pelvis)
+            transform_q[:,4,:], transform_t[:,4,:] = tf_combine(transform_q[:,3,:], transform_t[:,3,:], local_rot[:,4,:], local_translations[:,4,:])
+            # right hand (r_hand -> r_l_arm -> r_u_arm -> torso -> pelvis)
+            transform_q[:,5,:], transform_t[:,5,:] = tf_combine(transform_q[:,4,:], transform_t[:,4,:], local_rot[:,5,:], local_translations[:,5,:])
+            # sword (sword -> r_hand -> r_l_arm -> r_u_arm -> torso -> pelvis)
+            transform_q[:,6,:], transform_t[:,6,:] = tf_combine(transform_q[:,5,:], transform_t[:,5,:], local_rot[:,6,:], local_translations[:,6,:])
+            # left upper arm (l_u_arm -> torso -> pelvis)
+            transform_q[:,7,:], transform_t[:,7,:] = tf_combine(transform_q[:,1,:], transform_t[:,1,:], local_rot[:,7,:], local_translations[:,7,:])
+            # left lower arm (l_l_arm -> l_u_arm -> torso -> pelvis)
+            transform_q[:,8,:], transform_t[:,8,:] = tf_combine(transform_q[:,7,:], transform_t[:,7,:], local_rot[:,8,:], local_translations[:,8,:])
+            # shield (shield -> l_l_arm -> l_u_arm -> torso -> pelvis)
+            transform_q[:,9,:], transform_t[:,9,:] = tf_combine(transform_q[:,8,:], transform_t[:,8,:], local_rot[:,9,:], local_translations[:,9,:])
+            # left hand (l_hand -> l_l_arm -> l_u_arm -> torso -> pelvis)
+            transform_q[:,10,:], transform_t[:,10,:] = tf_combine(transform_q[:,8,:], transform_t[:,8,:], local_rot[:,10,:], local_translations[:,10,:])
+            # right thigh (r_thigh -> pelvis)
+            transform_q[:,11,:], transform_t[:,11,:] = tf_combine(transform_q[:,0,:], transform_t[:,0,:], local_rot[:,11,:], local_translations[:,11,:])
+            # right shin (r_shin -> r_thigh -> pelvis)
+            transform_q[:,12,:], transform_t[:,12,:] = tf_combine(transform_q[:,11,:], transform_t[:,11,:], local_rot[:,12,:], local_translations[:,12,:])
+            # right foot (r_foot -> r_shin -> r_thigh -> pelvis)
+            transform_q[:,13,:], transform_t[:,13,:] = tf_combine(transform_q[:,12,:], transform_t[:,12,:], local_rot[:,13,:], local_translations[:,13,:])
+            # left thigh (l_thigh -> pelvis)
+            transform_q[:,14,:], transform_t[:,14,:] = tf_combine(transform_q[:,0,:], transform_t[:,0,:], local_rot[:,14,:], local_translations[:,14,:])
+            # left shin (l_shin -> l_thigh -> pelvis)
+            transform_q[:,15,:], transform_t[:,15,:] = tf_combine(transform_q[:,14,:], transform_t[:,14,:], local_rot[:,15,:], local_translations[:,15,:])
+            # left foot (l_foot -> l_shin -> l_thigh -> pelvis)
+            transform_q[:,16,:], transform_t[:,16,:] = tf_combine(transform_q[:,15,:], transform_t[:,15,:], local_rot[:,16,:], local_translations[:,16,:])
+
+            # return global coordinates for each rigid body (origin of body frame)
+            global_pos = torch.empty((num_envs, num_bodies, 3), device=self.device)   # num envs x num rigid bodies x 3 (position)
+
+            global_pos = transform_t
+            #global_pos[:,body,:] = tf_apply(transform_q[:,body,:], transform_t[:,body,:], torch.zeros((3), device=self.device))
+
+            # compute not only global coordinates of body frame origin but some further points to avoid penetrations
+            # compute global coordinates of corners of left and right foot
+            # base foot size="0.0885 0.045 0.0275" 
+            foot_corners = torch.tensor([[0.0885/2, 0.045/2, 0.0275/2], [0.0885/2, 0.045/2, -0.0275/2], [0.0885/2, -0.045/2, 0.0275/2], [0.0885/2, -0.045/2, -0.0275/2], [-0.0885/2, 0.045/2, 0.0275/2], [-0.0885/2, 0.045/2, -0.0275/2], [-0.0885/2, -0.045/2, 0.0275/2], [-0.0885/2, -0.045/2, -0.0275/2]], device=self.device, requires_grad=False)
+            right_foot_q, right_foot_t = tf_combine(transform_q[:,13,:], transform_t[:,13,:], to_torch([0,0,0,1], device=self.device).expand(num_envs,4), to_torch(self.local_right_foot_pos,device=self.device, dtype=torch.float32)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]])
+            left_foot_q, left_foot_t = tf_combine(transform_q[:,16,:], transform_t[:,16,:], to_torch([0,0,0,1], device=self.device).expand(num_envs,4), to_torch(self.local_left_foot_pos,device=self.device, dtype=torch.float32)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]])
+            for corner in foot_corners:
+                # tf_apply(q, t, v): quat_apply(q, v) + t
+                point_right = tf_apply(right_foot_q, right_foot_t, corner.expand(num_envs,3))
+                point_left = tf_apply(left_foot_q, left_foot_t, corner.expand(num_envs,3))
+                global_pos = torch.cat((global_pos, point_right.unsqueeze(1)), dim=1)
+                global_pos = torch.cat((global_pos, point_left.unsqueeze(1)), dim=1)
+
+            # compute distance to ground for base character as reference
+
+            if torch.sum(torch.gt(torch.min(global_pos[:,:,2], dim=1).values,torch.ones_like(global_pos[:,0,0])*0.1))>0:
+                print("here")
+
+            # find minimal z coordinate and increase root pos by that amount if negative
+            if torch.sum(torch.gt(torch.zeros_like(global_pos[:,0,0]),torch.min(global_pos[:,:,2], dim=1).values))>0:
+                    root_pos[:,2] -= torch.clamp_max(torch.min(global_pos[:,:,2], dim=1).values, max=0)
+
+            # SIMULATION APPROACH
+
+            #self._humanoid_root_states[env_ids, 0:3] = root_pos
+            #self._humanoid_root_states[env_ids, 3:7] = root_rot
+            #self._humanoid_root_states[env_ids, 7:10] = root_vel
+            #self._humanoid_root_states[env_ids, 10:13] = root_ang_vel
+            #
+            #self._dof_pos[env_ids] = dof_pos
+            #self._dof_vel[env_ids] = dof_vel
+#   
+            #env_ids_int32 = self._humanoid_actor_ids[env_ids]
+            #self.gym.set_actor_root_state_tensor_indexed(self.sim,
+            #                                             gymtorch.unwrap_tensor(self._root_states),
+            #                                             gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+            #self.gym.set_dof_state_tensor_indexed(self.sim,
+            #                                      gymtorch.unwrap_tensor(self._dof_state),
+            #                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+#   
+            #self.render()
+            #self.gym.simulate(self.sim)
+            #self.render()
+            #
+#   
+            #test_00 = torch.zeros_like(self._rigid_body_pos[env_ids])
+            #test_000 = torch.zeros_like(self._rigid_body_pos[env_ids,0,0])
+            #test_01 = torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values
+            #test_1 = torch.gt(torch.zeros_like(self._rigid_body_pos[env_ids,0,0]),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values)
+            #test_2 = torch.sum(torch.gt(torch.zeros_like(self._rigid_body_pos[env_ids,0,0]),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values))
+            #if torch.sum(torch.gt(torch.zeros_like(self._rigid_body_pos[env_ids,0,0]),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values))>0:
+            #        test_4 = torch.clamp_max(torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values, max=0)
+            #        root_pos[:,2] -= torch.clamp_max(torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values, max=0)
+#   
+            #        testtt = to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
+            #        corr = 0.0275 * to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
+            #        root_pos[:,2] = torch.where(torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).indices == 13, root_pos[:,2] + 2*0.0885 * to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]], root_pos[:,2])
+            #        root_pos[:,2] = torch.where(torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).indices == 16, root_pos[:,2] + 2*0.0885 * to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]], root_pos[:,2])
+            #        
+            #        #elif [5,10] in torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).indices:
+#   
+            #self._humanoid_root_states[env_ids, 0:3] = root_pos
+            #self._humanoid_root_states[env_ids, 3:7] = root_rot
+            #self._humanoid_root_states[env_ids, 7:10] = root_vel
+            #self._humanoid_root_states[env_ids, 10:13] = root_ang_vel
+            #
+            #self._dof_pos[env_ids] = dof_pos
+            #self._dof_vel[env_ids] = dof_vel
+#   
+            #env_ids_int32 = self._humanoid_actor_ids[env_ids]
+            #self.gym.set_actor_root_state_tensor_indexed(self.sim,
+            #                                             gymtorch.unwrap_tensor(self._root_states),
+            #                                             gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+            #self.gym.set_dof_state_tensor_indexed(self.sim,
+            #                                      gymtorch.unwrap_tensor(self._dof_state),
+            #                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+#   
+            #self.render()
+            #self.gym.simulate(self.sim)
+            #self.render()
+
+            # RANDOM APPROACHES
+
+            #dof_frame = self.gym.get_actor_dof_frames(self.envs[13], self.humanoid_handles[13])
+
+            #poses = self.gym.get_actor_rigid_body_states(self.envs[13], self.humanoid_handles[13], gymapi.STATE_POS)['pose']
+            # Get pose for all of the handles
+            #pose = gymapi.Transform.from_buffer(poses[0])
+
+            #gymapi.Transform.from_buffer(self._rigid_body_pos[13,0])
+
+            # check that there is no penetration
+            # compute forward kinematics to get rigid body pos
+            #self.joint_transforms #35 x np.array(16x ((3) pos, (4) rot)
+            #root_pos
+
+
+            #for env_id in env_ids:
+                    #env = self.envs[env_id]
+                    #handle = self.gym.find_actor_handle(env, actor)
+                    #actor_handle = self.humanoid_handles[env_id]
+                    #transforms = self.gym.get_actor_joint_transforms(env, actor_handle)
+
+
+            #top_drawer_grasp = gymapi.Transform(top_drawer_point, top_drawer_handle_pose.r)
+            # min z value should be greater than 0
+            # ow increase root pos
+
+            #self.joint_transforms #35 x np.array(16x ((3) pos, (4) rot)
+
+            #for i in self._rigid_body_pos.shape[1]-1:
+            #    local_rot = self.gym.Quat.from_axis_angle(gymapi.Vec3(1, 0, 0), dof_pos[0])
+
+            # generate transforms
+            #transforms = []
+            #transforms.append(gymapi.Transform(root_pos,root_rot))
+            #for i in self._rigid_body_pos.shape[1]-1:
+                # retrieve initial global transform for rigid body i + 1
+            #    transform = self.joint_transforms_2[i+1]
+            #    axis = gymapi.Quat.from_axis_angle(gymapi.Vec3(1, 0, 0), 0.5 * math.pi)
+
+            #    transform = gymapi.Transform(self.joint_transforms_2[i].p,self.joint_transforms_2[i].r)
+            #    old_glob_trans = self.joint_transforms_2[i+1].p
+            #    loc_trans = transform.inverse().transform_point(old_glob_trans)
+            #    new_glob_trans = transforms[i].transform_point(loc_trans)
+
+            #self.joint_transforms_2[0].r = root_rot
+
+            #transform = gymapi.Transform(self.joint_transforms_2[0].p,self.joint_transforms_2[0].r)
 
         self._set_env_state(env_ids=env_ids, 
                             root_pos=root_pos, 
@@ -248,7 +447,7 @@ class HumanoidAMP(Humanoid):
 
         motion_ids = motion_ids.view(-1)
         motion_times = motion_times.view(-1)
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos, local_rot \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
         amp_obs_demo = build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel, 
                                               dof_pos, dof_vel, key_pos, 
@@ -258,6 +457,9 @@ class HumanoidAMP(Humanoid):
         return
     
     def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
+        #make sure character is placed correctly by scaling z component of root_pos by leg's scale factor
+        #scale_leg_for_envs = to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
+        #root_pos[:,2] = torch.mul(root_pos[:,2],scale_leg_for_envs)
         self._humanoid_root_states[env_ids, 0:3] = root_pos
         self._humanoid_root_states[env_ids, 3:7] = root_rot
         self._humanoid_root_states[env_ids, 7:10] = root_vel

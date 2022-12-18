@@ -67,6 +67,7 @@ params:
     clip_value: False
     seq_len: 4
     bounds_loss_coef: 10
+    eval: True
     
     task_reward_w: 0.9
     disc_reward_w: 0.1

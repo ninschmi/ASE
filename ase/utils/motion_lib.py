@@ -197,7 +197,7 @@ class MotionLib():
         local_rot = torch_utils.slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
         dof_pos = self._local_rotation_to_dof(local_rot)
 
-        return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos
+        return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos, local_rot
     
     def _load_motions(self, motion_file):
         self._motions = []

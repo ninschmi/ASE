@@ -1,0 +1,18 @@
+character: amp_humanoid_sword_shield.xml
+task: HumanoidReach
+numEnvs: 4096
+episodeLength: 300
+enableEarlyTermination: false
+numGames: 4096
+GamesPlayed: 4096
+initState: Default
+tar_change_step: 300
+evaluation:
+  total_successes: 31148.0
+  total_failures: 0.0
+  total_tasks: 31148.0
+  average_completion_time: 111.51345190702453
+  success_rate: 1.0
+  failure_rate: 0.0
+  av_reward: 22.66939926147461
+  av steps: 60.0

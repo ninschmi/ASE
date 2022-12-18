@@ -1,0 +1,55 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+
+
+    
+
+
+    
+
+        {
+            "name": "Python: HumanoidAMPGetup",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidAMPGetup", "--num_envs", "16", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup.yaml", "--cfg_train", "ase/data/cfg/train/rlg/ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidAMPGetupDR",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task" , "HumanoidAMPGetup", "--num_envs", "35", "--randomize","--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup.yaml", "--cfg_train", "ase/data/cfg/train/rlg/ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidReach",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--num_envs", "16", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "ase/data/models/ase_hlc_reach_reallusion_sword_shield.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidReachEval",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_eval.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "ase/data/models/ase_hlc_reach_reallusion_sword_shield.pth", "--headless"]
+        }
+    ]
+}

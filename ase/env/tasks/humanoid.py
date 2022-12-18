@@ -28,11 +28,14 @@
 
 import numpy as np
 import os
-import torch
 
 from isaacgym import gymtorch
 from isaacgym import gymapi
 from isaacgym.torch_utils import *
+
+import torch
+import random
+import xml.etree.ElementTree as et
 
 from utils import torch_utils
 
@@ -66,6 +69,8 @@ class Humanoid(BaseTask):
         self.cfg["device_type"] = device_type
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
+
+        self.randomize = self.cfg["task"].get("randomize", False)
          
         super().__init__(cfg=self.cfg)
         
@@ -121,6 +126,7 @@ class Humanoid(BaseTask):
         
         self._terminate_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
         
+        ##TO DO: change termination heights
         self._build_termination_heights()
         
         contact_bodies = self.cfg["env"]["contactBodies"]
@@ -201,6 +207,7 @@ class Humanoid(BaseTask):
     def _setup_character_props(self, key_bodies):
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
         num_key_bodies = len(key_bodies)
+        asset_path = "ase/data/assets/" + asset_file
 
         if (asset_file == "mjcf/amp_humanoid.xml"):
             self._dof_body_ids = [1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14]
@@ -210,6 +217,12 @@ class Humanoid(BaseTask):
             self._num_obs = 1 + 15 * (3 + 6 + 3 + 3) - 3
             
         elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
+            self._dof_body_ids = [1, 2, 3, 4, 5, 7, 8, 11, 12, 13, 14, 15, 16]
+            self._dof_offsets = [0, 3, 6, 9, 10, 13, 16, 17, 20, 21, 24, 27, 28, 31]
+            self._dof_obs_size = 78
+            self._num_actions = 31
+            self._num_obs = 1 + 17 * (3 + 6 + 3 + 3) - 3
+        elif (os.path.isfile(asset_path)):
             self._dof_body_ids = [1, 2, 3, 4, 5, 7, 8, 11, 12, 13, 14, 15, 16]
             self._dof_offsets = [0, 3, 6, 9, 10, 13, 16, 17, 20, 21, 24, 27, 28, 31]
             self._dof_obs_size = 78
@@ -233,10 +246,13 @@ class Humanoid(BaseTask):
         self._termination_heights[head_id] = max(head_term_height, self._termination_heights[head_id])
 
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
+        asset_path = "ase/data/assets/" + asset_file
         if (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
             left_arm_id = self.gym.find_actor_rigid_body_handle(self.envs[0], self.humanoid_handles[0], "left_lower_arm")
             self._termination_heights[left_arm_id] = max(shield_term_height, self._termination_heights[left_arm_id])
-        
+        elif (os.path.isfile(asset_path)):
+            left_arm_id = self.gym.find_actor_rigid_body_handle(self.envs[0], self.humanoid_handles[0], "left_lower_arm")
+            self._termination_heights[left_arm_id] = max(shield_term_height, self._termination_heights[left_arm_id])
         self._termination_heights = to_torch(self._termination_heights, device=self.device)
         return
 
@@ -247,27 +263,135 @@ class Humanoid(BaseTask):
         asset_root = self.cfg["env"]["asset"]["assetRoot"]
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
 
-        asset_path = os.path.join(asset_root, asset_file)
-        asset_root = os.path.dirname(asset_path)
-        asset_file = os.path.basename(asset_path)
+        #load all characters for domain randomization
+        if self.randomize:
+            asset_dir = self.cfg["env"]["asset"]["assetDir"]
+            asset_dir_path = os.path.join(asset_root, asset_dir)
+            if os.path.isdir(asset_dir_path):
+                self.asset_files = []
+                self._scale_arm = []
+                self._scale_leg = []
+                for num,file in enumerate(os.listdir(asset_dir_path)):
+                    asset_path = os.path.join(asset_dir_path, file)
+                    if os.path.isfile(asset_path) and file.endswith('.xml'):
+                        asset_root = os.path.dirname(asset_path)
+                        filename = os.path.basename(asset_path)
+                        self.asset_files.append(filename)
+
+                        # get scale factors
+                        factors =filename.replace("amp_humanoid_sword_shield_arm_", "").replace(".xml","").replace("-",".").split("_leg_")
+                        self._scale_arm.append(float(factors[0]))
+                        self._scale_leg.append(float(factors[1]))
+                        if float(factors[0]) == 1 and float(factors[1]) == 1:
+                            self.base_char_idx = num
+                    else:
+                        print("Invalid file: {s}".format(file))
+                        assert(False)
+            else:
+                print("Could not find asset directory: {s}".format(asset_dir_path))
+                assert(False)
+        else:
+            asset_path = os.path.join(asset_root, asset_file)
+            asset_root = os.path.dirname(asset_path)
+            asset_file = os.path.basename(asset_path)
+            
+            # get scale factors
+            if "_arm_" in asset_file:
+                factors = asset_file.replace("amp_humanoid_sword_shield_arm_", "").replace(".xml","").replace("-",".").split("_leg_")
+                self._scale_arm = float(factors[0])
+                self._scale_leg = float(factors[1])
+            else:
+                self._scale_arm = 1
+                self._scale_leg = 1
 
         asset_options = gymapi.AssetOptions()
         asset_options.angular_damping = 0.01
         asset_options.max_angular_velocity = 100.0
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
         #asset_options.fix_base_link = True
-        humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
+        if self.randomize:
+            humanoid_assets = []
+            motor_efforts_arr = []
+            num_bodies_arr = []
+            num_dof_arr = []
+            num_joints_arr = []
+            self._pelvis_pos_arr = []
+            self.local_rigid_body_pos = []
+            self.local_left_foot_pos = []
+            self.local_right_foot_pos = []
+            for asset_file in self.asset_files:
+                humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
+                humanoid_assets.append(humanoid_asset)
 
-        actuator_props = self.gym.get_asset_actuator_properties(humanoid_asset)
-        motor_efforts = [prop.motor_effort for prop in actuator_props]
+                actuator_props = self.gym.get_asset_actuator_properties(humanoid_asset)
+                motor_efforts = [prop.motor_effort for prop in actuator_props]
+                
+                # create force sensors at the feet
+                right_foot_idx = self.gym.find_asset_rigid_body_index(humanoid_asset, "right_foot")
+                left_foot_idx = self.gym.find_asset_rigid_body_index(humanoid_asset, "left_foot")
+                sensor_pose = gymapi.Transform()
+
+                self.gym.create_asset_force_sensor(humanoid_asset, right_foot_idx, sensor_pose)
+                self.gym.create_asset_force_sensor(humanoid_asset, left_foot_idx, sensor_pose)
+
+                self.max_motor_effort = max(motor_efforts)
+                motor_efforts_arr.append(torch.unsqueeze(to_torch(motor_efforts, device=self.device), 0))
+                
+                num_bodies_arr.append(self.gym.get_asset_rigid_body_count(humanoid_asset))
+                num_dof_arr.append(self.gym.get_asset_dof_count(humanoid_asset))
+                num_joints_arr.append(self.gym.get_asset_joint_count(humanoid_asset))
+
+                xml_root = et.parse(os.path.join(asset_root, asset_file)).getroot()
+
+                # get pelvis position of character to set actor correctly in env
+                pelvis_pos_string = xml_root.find('.//body[@name="pelvis"]').get('pos')
+                pelvis_pos_list = pelvis_pos_string.split(" ")
+                #pelvis_pos_list = [float(x) for x in pelvis_pos_list]
+                self._pelvis_pos_arr.append(np.array(pelvis_pos_list, dtype=float))
+
+                #get local positions of rigid body frames
+                rigid_body_names = self.gym.get_asset_rigid_body_names(humanoid_asset)
+                rigid_body_pos = np.empty((self.gym.get_asset_rigid_body_count(humanoid_asset), 3))
+                for i,rigid_body in enumerate(rigid_body_names):
+                    rigid_body_pos_string = xml_root.find('.//body[@name="%s"]' %rigid_body).get('pos')
+                    rigid_body_pos[i] = [float(x) for x in rigid_body_pos_string.split(" ")]
+                self.local_rigid_body_pos.append(rigid_body_pos)
+
+                self.local_left_foot_pos.append([float(x) for x in xml_root.find('.//body[@name="left_foot"]').find('geom').get('pos').split(" ")])
+                self.local_right_foot_pos.append([float(x) for x in xml_root.find('.//body[@name="right_foot"]').find('geom').get('pos').split(" ")])
+
+
+            if torch.unique(torch.cat(motor_efforts_arr, dim=0), dim=0).size(0)!=1 or len(set(num_bodies_arr))!=1 or len(set(num_dof_arr))!=1 or len(set(num_joints_arr))!=1:
+                print("Humanoid assets for Domain Randomization vary in motor efforts, number of bodies, number of dofs or number of joints.")
+                assert(False)
+            # determine which character is placed into which environment
+            self.num_chars = len(self.asset_files)
+            self.env_char_mapping = np.empty((self.num_envs), dtype=int)
+            self.envs_per_file = self.num_envs//self.num_chars
+            rest = self.num_envs%self.num_chars
         
-        # create force sensors at the feet
-        right_foot_idx = self.gym.find_asset_rigid_body_index(humanoid_asset, "right_foot")
-        left_foot_idx = self.gym.find_asset_rigid_body_index(humanoid_asset, "left_foot")
-        sensor_pose = gymapi.Transform()
+            if(self.envs_per_file != 0):
+                self.env_char_mapping[:self.num_chars*self.envs_per_file] = np.floor_divide(np.arange(0,self.num_chars*self.envs_per_file), self.envs_per_file)
+            self.env_char_mapping[self.num_chars*self.envs_per_file:] = random.sample(np.arange(0,self.num_chars).tolist(), rest)
+        else:
+            humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
+            
+            actuator_props = self.gym.get_asset_actuator_properties(humanoid_asset)
+            motor_efforts = [prop.motor_effort for prop in actuator_props]
+        
+            # create force sensors at the feet
+            right_foot_idx = self.gym.find_asset_rigid_body_index(humanoid_asset, "right_foot")
+            left_foot_idx = self.gym.find_asset_rigid_body_index(humanoid_asset, "left_foot")
+            sensor_pose = gymapi.Transform()
 
-        self.gym.create_asset_force_sensor(humanoid_asset, right_foot_idx, sensor_pose)
-        self.gym.create_asset_force_sensor(humanoid_asset, left_foot_idx, sensor_pose)
+            self.gym.create_asset_force_sensor(humanoid_asset, right_foot_idx, sensor_pose)
+            self.gym.create_asset_force_sensor(humanoid_asset, left_foot_idx, sensor_pose)
+
+            # get pelvis position of character to set actor correctly in env
+            pelvis_pos_string = et.parse(os.path.join(asset_root, asset_file)).getroot().find('.//body[@name="pelvis"]').get('pos')
+            pelvis_pos_list = pelvis_pos_string.split(" ")
+            #pelvis_pos_list = [float(x) for x in pelvis_pos_list]
+            self._pelvis_pos = np.array(pelvis_pos_list, dtype=float)
 
         self.max_motor_effort = max(motor_efforts)
         self.motor_efforts = to_torch(motor_efforts, device=self.device)
@@ -281,13 +405,21 @@ class Humanoid(BaseTask):
         self.envs = []
         self.dof_limits_lower = []
         self.dof_limits_upper = []
+        dof_prop_arr = []    
         
         for i in range(self.num_envs):
             # create env instance
             env_ptr = self.gym.create_env(self.sim, lower, upper, num_per_row)
-            self._build_env(i, env_ptr, humanoid_asset)
+            if self.randomize:
+                self._build_env(i, env_ptr, humanoid_assets[self.env_char_mapping[i]])
+                dof_prop_arr.append(self.gym.get_actor_dof_properties(env_ptr, self.humanoid_handles[i]))
+            else:
+                self._build_env(i, env_ptr, humanoid_asset)
             self.envs.append(env_ptr)
 
+        if self.randomize and np.unique(np.asarray(dof_prop_arr), axis=0).shape[0]!=1:
+            print("Humanoid assets for Domain Randomization vary in dof properties.")
+            assert(False)
         dof_prop = self.gym.get_actor_dof_properties(self.envs[0], self.humanoid_handles[0])
         for j in range(self.num_dof):
             if dof_prop['lower'][j] > dof_prop['upper'][j]:
@@ -315,6 +447,16 @@ class Humanoid(BaseTask):
         char_h = 0.89
 
         start_pose.p = gymapi.Vec3(*get_axis_params(char_h, self.up_axis_idx))
+
+        if self.randomize:
+            pelvis_pos = self._pelvis_pos_arr[self.env_char_mapping[env_id]]
+        else:
+            pelvis_pos = self._pelvis_pos
+
+        start_pose.p.x = start_pose.p.x*pelvis_pos[0]
+        start_pose.p.y = start_pose.p.y*pelvis_pos[1]
+        start_pose.p.z = start_pose.p.z*pelvis_pos[2]   
+        
         start_pose.r = gymapi.Quat(0.0, 0.0, 0.0, 1.0)
 
         humanoid_handle = self.gym.create_actor(env_ptr, humanoid_asset, start_pose, "humanoid", col_group, col_filter, segmentation_id)

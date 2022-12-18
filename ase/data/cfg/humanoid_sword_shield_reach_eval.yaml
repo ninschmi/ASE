@@ -9,33 +9,36 @@ env:
   pdControl: True
   powerScale: 1.0
   controlFrequencyInv: 2 # 30 Hz
-  stateInit: "Hybrid"
+  stateInit: "Default"
   hybridInitProb: 0.5
   numAMPObsSteps: 10
-  recoveryEpisodeProb: 0.2
-  recoverySteps: 60
-  fallInitProb: 0.1
   
   localRootObs: True
   keyBodies: ["right_hand", "left_hand", "right_foot", "left_foot", "sword", "shield"]
   contactBodies: ["right_foot", "left_foot"]
   terminationHeight: 0.15
-  enableEarlyTermination: True
+  enableEarlyTermination: False
+  eval: True
+  
+  tarSpeed: 1.0
+  tarChangeStepsMin: 50
+  tarChangeStepsMax: 100
+  tarDistMax: 1.0
+  tarHeightMin: 0.2
+  tarHeightMax: 2.0
+  
+  reachBodyName: "sword"
+  enableTaskObs: True
 
   asset:
     assetRoot: "ase/data/assets"
-    assetFileName: "mjcf/amp_humanoid_sword_shield.xml"
-    #assetFileName: "mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_0-5.xml"
-    #assetFileName: "mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_2-0.xml"
-    assetDir: "mjcf/arm_leg_parametrization"
+    #assetFileName: "mjcf/amp_humanoid_sword_shield.xml"
+    assetFileName: "mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_0-5.xml"
 
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0
     restitution: 0.0
-
-task:
-    randomize: False
 
 sim:
   substeps: 2
