@@ -1,6 +1,7 @@
 *.pyc
 
 .vs/
+arm_leg_parametrization/
 runs/
 __pycache__/
 output/
