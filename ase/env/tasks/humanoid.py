@@ -369,10 +369,19 @@ class Humanoid(BaseTask):
             self.env_char_mapping = np.empty((self.num_envs), dtype=int)
             self.envs_per_file = self.num_envs//self.num_chars
             rest = self.num_envs%self.num_chars
-        
+            self.char_env_mapping = [[] for _ in range(self.num_chars)]  # remember all environments a character occurs in
+            self.num_envs_per_char = self.envs_per_file * np.ones((self.num_chars,), dtype=int)        
+
             if(self.envs_per_file != 0):
                 self.env_char_mapping[:self.num_chars*self.envs_per_file] = np.floor_divide(np.arange(0,self.num_chars*self.envs_per_file), self.envs_per_file)
+                for i in range(self.num_chars):
+                    self.char_env_mapping[i] = (list(range(i*self.envs_per_file,(i+1)*self.envs_per_file)))
             self.env_char_mapping[self.num_chars*self.envs_per_file:] = random.sample(np.arange(0,self.num_chars).tolist(), rest)
+            for j in range(rest):
+                index = self.num_chars*self.envs_per_file+j
+                self.char_env_mapping[self.env_char_mapping[index]].append(index)
+                self.num_envs_per_char[self.env_char_mapping[index]] += 1
+        
         else:
             humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
             

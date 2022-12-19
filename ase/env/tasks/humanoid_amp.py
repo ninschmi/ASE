@@ -206,23 +206,25 @@ class HumanoidAMP(Humanoid):
             # compute forward kinematics to get rigid body pos in global coordinates
             # find global coordinates of rigid body positionst
 
-            # make sure there is an environment with a base character for reference
-            #if not self.base_char_idx in to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]:
-            #    x = self.envs_per_file * self.base_char_idx
-            #    env_ids = torch.cat((env_ids, to_torch([self.envs_per_file * self.base_char_idx], dtype=torch.int)), dim=0)
-
-            # retrieve local translation from mujoco file for forward kinematics
+            # retrieve local translation from mujoco file for forward kinematics for reset env characters and base character
             local_translations = to_torch(self.local_rigid_body_pos,device=self.device, dtype=torch.float32)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
-                
+            ref_local_translations = to_torch(self.local_rigid_body_pos[self.base_char_idx],device=self.device, dtype=torch.float32)
+
             num_bodies = local_rot.shape[1]
 
             # compute transforms for each rigid body
             transform_q = torch.empty((num_envs, num_bodies, 4), device=self.device)   # num envs x num rigid bodies x 4 (quaternions)
             transform_t = torch.empty((num_envs, num_bodies, 3), device=self.device)   # num envs x num rigid bodies x 3 (translation)
 
+            # compute transforms for each rigid body of base character (to get reference)
+            ref_transform_q = torch.empty((num_envs, num_bodies, 4), device=self.device)   # num envs x num rigid bodies x 4 (quaternions)
+            ref_transform_t = torch.empty((num_envs, num_bodies, 3), device=self.device)   # num envs x num rigid bodies x 3 (translation)
+
             # pelvis aka root
             transform_q[:,0,:] = root_rot
             transform_t[:,0,:] = root_pos
+            ref_transform_q[:,0,:] = root_rot
+            ref_transform_t[:,0,:] = root_pos
 
             # torso (torso -> pelvis)
             transform_q[:,1,:], transform_t[:,1,:] = tf_combine(transform_q[:,0,:], transform_t[:,0,:], local_rot[:,1,:], local_translations[:,1,:])
@@ -257,11 +259,47 @@ class HumanoidAMP(Humanoid):
             # left foot (l_foot -> l_shin -> l_thigh -> pelvis)
             transform_q[:,16,:], transform_t[:,16,:] = tf_combine(transform_q[:,15,:], transform_t[:,15,:], local_rot[:,16,:], local_translations[:,16,:])
 
+            # repeat forward kinematics for base character
+            # torso (torso -> pelvis)
+            ref_transform_q[:,1,:], ref_transform_t[:,1,:] = tf_combine(ref_transform_q[:,0,:], ref_transform_t[:,0,:], local_rot[:,1,:], ref_local_translations[1,:].expand(num_envs,3))
+            # head (head -> torso -> pelvis)
+            ref_transform_q[:,2,:], ref_transform_t[:,2,:] = tf_combine(ref_transform_q[:,1,:], ref_transform_t[:,1,:], local_rot[:,2,:], ref_local_translations[2,:].expand(num_envs,3))
+            # right upper arm (r_u_arm -> torso -> pelvis)
+            ref_transform_q[:,3,:], ref_transform_t[:,3,:] = tf_combine(ref_transform_q[:,1,:], ref_transform_t[:,1,:], local_rot[:,3,:], ref_local_translations[3,:].expand(num_envs,3))
+            # right lower arm  (r_l_arm -> r_u_arm -> torso -> pelvis)
+            ref_transform_q[:,4,:], ref_transform_t[:,4,:] = tf_combine(ref_transform_q[:,3,:], ref_transform_t[:,3,:], local_rot[:,4,:], ref_local_translations[4,:].expand(num_envs,3))
+            # right hand (r_hand -> r_l_arm -> r_u_arm -> torso -> pelvis)
+            ref_transform_q[:,5,:], ref_transform_t[:,5,:] = tf_combine(ref_transform_q[:,4,:], ref_transform_t[:,4,:], local_rot[:,5,:], ref_local_translations[5,:].expand(num_envs,3))
+            # sword (sword -> r_hand -> r_l_arm -> r_u_arm -> torso -> pelvis)
+            ref_transform_q[:,6,:], ref_transform_t[:,6,:] = tf_combine(ref_transform_q[:,5,:], ref_transform_t[:,5,:], local_rot[:,6,:], ref_local_translations[6,:].expand(num_envs,3))
+            # left upper arm (l_u_arm -> torso -> pelvis)
+            ref_transform_q[:,7,:], ref_transform_t[:,7,:] = tf_combine(ref_transform_q[:,1,:], ref_transform_t[:,1,:], local_rot[:,7,:], ref_local_translations[7,:].expand(num_envs,3))
+            # left lower arm (l_l_arm -> l_u_arm -> torso -> pelvis)
+            ref_transform_q[:,8,:], ref_transform_t[:,8,:] = tf_combine(ref_transform_q[:,7,:], ref_transform_t[:,7,:], local_rot[:,8,:], ref_local_translations[8,:].expand(num_envs,3))
+            # shield (shield -> l_l_arm -> l_u_arm -> torso -> pelvis)
+            ref_transform_q[:,9,:], ref_transform_t[:,9,:] = tf_combine(ref_transform_q[:,8,:], ref_transform_t[:,8,:], local_rot[:,9,:], ref_local_translations[9,:].expand(num_envs,3))
+            # left hand (l_hand -> l_l_arm -> l_u_arm -> torso -> pelvis)
+            ref_transform_q[:,10,:], ref_transform_t[:,10,:] = tf_combine(ref_transform_q[:,8,:], ref_transform_t[:,8,:], local_rot[:,10,:], ref_local_translations[10,:].expand(num_envs,3))
+            # right thigh (r_thigh -> pelvis)
+            ref_transform_q[:,11,:], ref_transform_t[:,11,:] = tf_combine(ref_transform_q[:,0,:], ref_transform_t[:,0,:], local_rot[:,11,:], ref_local_translations[11,:].expand(num_envs,3))
+            # right shin (r_shin -> r_thigh -> pelvis)
+            ref_transform_q[:,12,:], ref_transform_t[:,12,:] = tf_combine(ref_transform_q[:,11,:], ref_transform_t[:,11,:], local_rot[:,12,:], ref_local_translations[12,:].expand(num_envs,3))
+            # right foot (r_foot -> r_shin -> r_thigh -> pelvis)
+            ref_transform_q[:,13,:], ref_transform_t[:,13,:] = tf_combine(ref_transform_q[:,12,:], ref_transform_t[:,12,:], local_rot[:,13,:], ref_local_translations[13,:].expand(num_envs,3))
+            # left thigh (l_thigh -> pelvis)
+            ref_transform_q[:,14,:], ref_transform_t[:,14,:] = tf_combine(ref_transform_q[:,0,:], ref_transform_t[:,0,:], local_rot[:,14,:], ref_local_translations[14,:].expand(num_envs,3))
+            # left shin (l_shin -> l_thigh -> pelvis)
+            ref_transform_q[:,15,:], ref_transform_t[:,15,:] = tf_combine(ref_transform_q[:,14,:], ref_transform_t[:,14,:], local_rot[:,15,:], ref_local_translations[15,:].expand(num_envs,3))
+            # left foot (l_foot -> l_shin -> l_thigh -> pelvis)
+            ref_transform_q[:,16,:], ref_transform_t[:,16,:] = tf_combine(ref_transform_q[:,15,:], ref_transform_t[:,15,:], local_rot[:,16,:], ref_local_translations[16,:].expand(num_envs,3))
+
             # return global coordinates for each rigid body (origin of body frame)
             global_pos = torch.empty((num_envs, num_bodies, 3), device=self.device)   # num envs x num rigid bodies x 3 (position)
+            ref_global_pos = torch.empty((num_envs, num_bodies, 3), device=self.device)   # num envs x num rigid bodies x 3 (position)
 
             global_pos = transform_t
             #global_pos[:,body,:] = tf_apply(transform_q[:,body,:], transform_t[:,body,:], torch.zeros((3), device=self.device))
+            ref_global_pos = ref_transform_t
 
             # compute not only global coordinates of body frame origin but some further points to avoid penetrations
             # compute global coordinates of corners of left and right foot
@@ -269,21 +307,30 @@ class HumanoidAMP(Humanoid):
             foot_corners = torch.tensor([[0.0885/2, 0.045/2, 0.0275/2], [0.0885/2, 0.045/2, -0.0275/2], [0.0885/2, -0.045/2, 0.0275/2], [0.0885/2, -0.045/2, -0.0275/2], [-0.0885/2, 0.045/2, 0.0275/2], [-0.0885/2, 0.045/2, -0.0275/2], [-0.0885/2, -0.045/2, 0.0275/2], [-0.0885/2, -0.045/2, -0.0275/2]], device=self.device, requires_grad=False)
             right_foot_q, right_foot_t = tf_combine(transform_q[:,13,:], transform_t[:,13,:], to_torch([0,0,0,1], device=self.device).expand(num_envs,4), to_torch(self.local_right_foot_pos,device=self.device, dtype=torch.float32)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]])
             left_foot_q, left_foot_t = tf_combine(transform_q[:,16,:], transform_t[:,16,:], to_torch([0,0,0,1], device=self.device).expand(num_envs,4), to_torch(self.local_left_foot_pos,device=self.device, dtype=torch.float32)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]])
+            # repeat for base character
+            ref_right_foot_q, ref_right_foot_t = tf_combine(ref_transform_q[:,13,:], ref_transform_t[:,13,:], to_torch([0,0,0,1], device=self.device).expand(num_envs,4), to_torch(self.local_right_foot_pos[self.base_char_idx],device=self.device, dtype=torch.float32).expand(num_envs,3))
+            ref_left_foot_q, ref_left_foot_t = tf_combine(ref_transform_q[:,16,:], ref_transform_t[:,16,:], to_torch([0,0,0,1], device=self.device).expand(num_envs,4), to_torch(self.local_left_foot_pos[self.base_char_idx],device=self.device, dtype=torch.float32).expand(num_envs,3))
             for corner in foot_corners:
                 # tf_apply(q, t, v): quat_apply(q, v) + t
                 point_right = tf_apply(right_foot_q, right_foot_t, corner.expand(num_envs,3))
                 point_left = tf_apply(left_foot_q, left_foot_t, corner.expand(num_envs,3))
                 global_pos = torch.cat((global_pos, point_right.unsqueeze(1)), dim=1)
                 global_pos = torch.cat((global_pos, point_left.unsqueeze(1)), dim=1)
+                ref_point_right = tf_apply(ref_right_foot_q, ref_right_foot_t, corner.expand(num_envs,3))
+                ref_point_left = tf_apply(ref_left_foot_q, ref_left_foot_t, corner.expand(num_envs,3))
+                ref_global_pos = torch.cat((ref_global_pos, ref_point_right.unsqueeze(1)), dim=1)
+                ref_global_pos = torch.cat((ref_global_pos, ref_point_left.unsqueeze(1)), dim=1)
 
-            # compute distance to ground for base character as reference
+            # find minimal z coordinate and adjust root pos by that amount s.t. character is placed on ground
+            root_pos[:,2] -= torch.min(global_pos[:,:,2], dim=1).values
+            
+            # compute distance to ground for base character as reference and only if greater than 0.1 lift modified character by same amount
+            mask_from_base = torch.gt(torch.min(ref_global_pos[:,:,2], dim=1).values,torch.ones_like(ref_global_pos[:,0,0])*0.1)
+            if torch.sum(mask_from_base)>0:
+                refere = torch.min(ref_global_pos[:,:,2], dim=1).values
+                check = mask_from_base * torch.min(ref_global_pos[:,:,2], dim=1).values
+                root_pos[:,2] += mask_from_base * torch.min(ref_global_pos[:,:,2], dim=1).values
 
-            if torch.sum(torch.gt(torch.min(global_pos[:,:,2], dim=1).values,torch.ones_like(global_pos[:,0,0])*0.1))>0:
-                print("here")
-
-            # find minimal z coordinate and increase root pos by that amount if negative
-            if torch.sum(torch.gt(torch.zeros_like(global_pos[:,0,0]),torch.min(global_pos[:,:,2], dim=1).values))>0:
-                    root_pos[:,2] -= torch.clamp_max(torch.min(global_pos[:,:,2], dim=1).values, max=0)
 
             # SIMULATION APPROACH
 

@@ -37,6 +37,8 @@ from isaacgym.torch_utils import *
 from utils import torch_utils
 from utils import gym_util
 
+import random
+
 
 class HumanoidAMPGetup(HumanoidAMP):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
@@ -77,10 +79,7 @@ class HumanoidAMPGetup(HumanoidAMP):
         ##else:
         ##    # generate fall states with all envs
         ##    env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
-        if self.randomize:
-            env_ids = to_torch(np.arange(self.num_chars*self.envs_per_file), device=self.device, dtype=torch.long)
-        else:
-            env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
+        env_ids = to_torch(np.arange(self.num_envs), device=self.device, dtype=torch.long)
         root_states = self._initial_humanoid_root_states[env_ids].clone()
         root_states[..., 3:7] = torch.randn_like(root_states[..., 3:7])
         root_states[..., 3:7] = torch.nn.functional.normalize(root_states[..., 3:7], dim=-1)
@@ -110,11 +109,11 @@ class HumanoidAMPGetup(HumanoidAMP):
         self._fall_dof_pos = self._dof_pos[env_ids].clone()
         self._fall_root_states[:, 7:13] = 0
 
-        if self.randomize:
+        #if self.randomize:
             # generate multiple fall root states (#env_per_char) for each character
-            self._fall_root_states = self._fall_root_states.view(self.num_chars, self.envs_per_file, 13)
-            self._fall_dof_pos = self._fall_dof_pos.view(self.num_chars, self.envs_per_file, 31)
-        
+            #self._fall_root_states = self._fall_root_states.view(self.num_chars, self.envs_per_file, 13)
+            #self._fall_dof_pos = self._fall_dof_pos.view(self.num_chars, self.envs_per_file, 31)
+
         self._fall_dof_vel = torch.zeros_like(self._fall_dof_pos, device=self.device, dtype=torch.float)
 
         return
@@ -152,15 +151,17 @@ class HumanoidAMPGetup(HumanoidAMP):
     
     def _reset_fall_episode(self, env_ids):
         if self.randomize:
-            fall_state_ids = torch.randint_like(env_ids, low=0, high=self._fall_root_states.shape[1])
-            fall_root_states = self._fall_root_states[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
-            dof_pos = self._fall_dof_pos[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
-            dof_vel = self._fall_dof_vel[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
+            indices = np.random.randint(env_ids.shape[0]*[0],self.num_envs_per_char[self.env_char_mapping[env_ids.tolist()]].tolist())
+            fall_state_ids = [(self.char_env_mapping[self.env_char_mapping[env_ids[i].item()]][indices[i]])  for i in range(env_ids.shape[0])]         
+            #fall_state_ids = torch.randint_like(env_ids, low=0, high=self._fall_root_states.shape[1])
+            #fall_root_states = self._fall_root_states[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
+            #dof_pos = self._fall_dof_pos[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
+            #dof_vel = self._fall_dof_vel[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids],fall_state_ids,:]
         else:
             fall_state_ids = torch.randint_like(env_ids, low=0, high=self._fall_root_states.shape[0])
-            fall_root_states = self._fall_root_states[fall_state_ids]
-            dof_pos = self._fall_dof_pos[fall_state_ids]
-            dof_vel = self._fall_dof_vel[fall_state_ids]
+        fall_root_states = self._fall_root_states[fall_state_ids]
+        dof_pos = self._fall_dof_pos[fall_state_ids]
+        dof_vel = self._fall_dof_vel[fall_state_ids]
         #if self.randomize:
         #    #make sure character is placed correctly by scaling z component of _fall_root_state by leg's scale factor
         #    test_0 = to_torch(self._scale_leg, device=self.device)
