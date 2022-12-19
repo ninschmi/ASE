@@ -56,6 +56,7 @@ class HRLPlayer(common_player.CommonPlayer):
         
         self._llc_steps = config['llc_steps']
         llc_checkpoint = config['llc_checkpoint']
+        self.eval = config['eval']
         assert(llc_checkpoint != "")
         self._build_llc(llc_config_params, llc_checkpoint)
         
@@ -95,7 +96,8 @@ class HRLPlayer(common_player.CommonPlayer):
         sum_rewards = 0
         sum_steps = 0
         sum_game_res = 0
-        n_games = n_games * n_game_life
+        #n_games = n_games * n_game_life
+        n_games = 4096
         games_played = 0
         has_masks = False
         has_masks_func = getattr(self.env, "has_action_mask", None) is not None
@@ -111,6 +113,15 @@ class HRLPlayer(common_player.CommonPlayer):
         for _ in range(n_games):
             if games_played >= n_games:
                 break
+
+            if self.eval:
+                #evaluation metrics
+                successes = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
+                failures = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
+                hlc_steps_to_succeed = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
+                success_counts = 0
+                failure_counts = 0
+                completion_time = 0
 
             obs_dict = self.env_reset()
             batch_size = 1
@@ -140,7 +151,16 @@ class HRLPlayer(common_player.CommonPlayer):
                 obs_dict, r, done, info = self.env_step(self.env, obs_dict, action)
                 cr += r
                 steps += 1
-  
+
+                #compute total successes and failures over all environements
+                if self.eval:
+                    successes += self.success_counts
+                    assert successes.isnan().sum() == 0, f"successes count is nan: {successes.isnan().sum()}"
+                    failures += self.failure_counts
+                    assert failures.isnan().sum() == 0, f"Failures count is nan: {failures.isnan().sum()}"
+                    #include  hlr steps     
+                    hlc_steps_to_succeed += self.llc_success_envs.float() * self._llc_steps * n + self.steps_to_succeed
+                    assert hlc_steps_to_succeed.isnan().sum() == 0, f"hlc_steps_to_succeed is nan: {hlc_steps_to_succeed.isnan().sum()}"
                 self._post_step(info)
 
                 if render:
@@ -191,6 +211,48 @@ class HRLPlayer(common_player.CommonPlayer):
         else:
             print('av reward:', sum_rewards / games_played * n_game_life, 'av steps:', sum_steps / games_played * n_game_life)
 
+        if eval:
+            #compute metrics
+            success_counts = successes.sum().item()
+            failure_counts = failures.sum().item()
+            #steps mean (divide steps per env by successes per env and take mean)
+            #steps_per_env = torch.where(successes.bool(), torch.div(hlc_steps_to_succeed, successes).float(), torch.zeros_like(successes))
+            #steps_mean = torch.mean(steps_per_env)
+            #completion time (sum over all steps than divide by success_count)
+            completion_time = hlc_steps_to_succeed.sum().item() / success_counts
+
+            #assert steps_per_env.isnan().sum() == 0, f"steps_per_env is nan: {steps_per_env.isnan().sum()}"
+            #assert steps_mean.isnan().sum() == 0, f"steps_mean is nan: {steps_mean.isnan().sum()}"
+
+            evaluation = {'total_successes':success_counts,
+                            'total_failures':failure_counts,
+                            'total_tasks':success_counts +failure_counts,
+                            'average_completion_time':completion_time,
+                            'success_rate':success_counts/(success_counts +failure_counts),
+                            'failure_rate':1-success_counts/(success_counts +failure_counts),
+                            'av_reward':sum_rewards / games_played * n_game_life,
+                            'av steps':sum_steps / games_played * n_game_life}
+
+            task_name = self.env.task.cfg["args"].__getattribute__('task')
+            
+            filename = self.env.task.cfg["env"]["asset"]["assetFileName"]
+            filename = filename.replace("mjcf/", "")
+            file = filename.replace(".xml", "_" + task_name + "_eval.yaml")
+
+            data = {'character':filename,
+                    'task':task_name,
+                    'numEnvs':self.env.task.cfg["env"]['numEnvs'],
+                    'episodeLength':self.env.task.cfg["env"]['episodeLength'],
+                    'enableEarlyTermination':self.env.task.cfg["env"]['enableEarlyTermination'],
+                    'numGames':n_games,
+                    'GamesPlayed':games_played,
+                    'initState':self.env.task.cfg["env"]['stateInit'],
+                    #'tar_change_step':self.env.task.cfg["env"]['tarChangeStepsMax'],
+                    'tar_change_step':112*2,
+                    'evaluation':evaluation}
+            with open(file, 'w') as f:
+                yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
         return
 
     def env_step(self, env, obs_dict, action):
@@ -201,6 +263,12 @@ class HRLPlayer(common_player.CommonPlayer):
         rewards = 0.0
         done_count = 0.0
         disc_rewards = 0.0
+        # initializations for evaluation metrics
+        if self.eval:
+            self.steps_to_succeed = 0.0
+            self.llc_success_envs = torch.zeros_like(env.task.success_envs)
+            self.success_counts = 0
+            self.failure_counts = 0
         for t in range(self._llc_steps):
             llc_actions = self._compute_llc_action(obs, action)
             obs, curr_rewards, curr_dones, infos = env.step(llc_actions)
@@ -212,6 +280,13 @@ class HRLPlayer(common_player.CommonPlayer):
             curr_disc_reward = self._calc_disc_reward(amp_obs)
             curr_disc_reward = curr_disc_reward[0, 0].cpu().numpy()
             disc_rewards += curr_disc_reward
+
+            #count succeeded and failed tasks and compute steps for succeeded tasks
+            if eval:
+                self.steps_to_succeed += torch.clamp_min((env.task.success_envs * (t+1) - self.steps_to_succeed), 0)
+                self.llc_success_envs = torch.logical_or(self.llc_success_envs, env.task.success_envs)
+                self.success_counts += env.task.success_envs
+                self.failure_counts += env.task.failure_envs
 
         rewards /= self._llc_steps
         dones = torch.zeros_like(done_count)

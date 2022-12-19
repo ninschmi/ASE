@@ -45,6 +45,7 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
         self._tar_dist_max = cfg["env"]["tarDistMax"]
         self._tar_height_min = cfg["env"]["tarHeightMin"]
         self._tar_height_max = cfg["env"]["tarHeightMax"]
+        self.eval = cfg["env"]["eval"]
 
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
@@ -55,6 +56,9 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
         
         self._tar_change_steps = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
         self._tar_pos = torch.zeros([self.num_envs, 3], device=self.device, dtype=torch.float)
+        if eval:
+            self.success_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
+            self.failure_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
 
         reach_body_name = cfg["env"]["reachBodyName"]
         self._reach_body_id = self._build_reach_body_id_tensor(self.envs[0], self.humanoid_handles[0], reach_body_name)
@@ -138,7 +142,27 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
 
     def _update_task(self):
         reset_task_mask = self.progress_buf >= self._tar_change_steps
-        rest_env_ids = reset_task_mask.nonzero(as_tuple=False).flatten()
+        if eval:
+            reach_body_pos = self._rigid_body_pos[:, self._reach_body_id, :]
+            pos_diff = self._tar_pos - reach_body_pos
+            pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
+            threshold = 0.088
+
+            self.success_envs = torch.zeros_like(self.progress_buf)
+            self.success_envs = torch.where(pos_err < threshold, torch.ones_like(self.progress_buf), self.success_envs) 
+            success_envs_ids = self.success_envs.nonzero(as_tuple=False).flatten()
+
+            assert self.success_envs.isnan().sum()==0, f"success envs is nan: {self.success_envs.isnan().sum()}"
+            assert self.failure_envs.isnan().sum()==0, f"failure envs is nan: {self.failure_envs.isnan().sum()}"
+            
+            if (not self.headless):
+                for i in success_envs_ids:
+                    self.gym.set_rigid_body_color(self.envs[i], self._marker_handles[i], 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.2, 0.1, 0.9))
+                    super().render()
+            self.failure_envs = reset_task_mask
+            rest_env_ids = torch.logical_or(self.success_envs, reset_task_mask).nonzero(as_tuple=False).flatten()
+        else: 
+            rest_env_ids = reset_task_mask.nonzero(as_tuple=False).flatten()
         if len(rest_env_ids) > 0:
             self._reset_task(rest_env_ids)
         return
@@ -150,11 +174,19 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
         rand_pos[..., 0:2] = self._tar_dist_max * (2.0 * rand_pos[..., 0:2] - 1.0)
         rand_pos[..., 2] = (self._tar_height_max - self._tar_height_min) * rand_pos[..., 2] + self._tar_height_min
         
-        change_steps = torch.randint(low=self._tar_change_steps_min, high=self._tar_change_steps_max,
+        if eval:
+            change_steps = torch.full((n,), 112*2, device=self.device, dtype=torch.int64)
+        else:
+            change_steps = torch.randint(low=self._tar_change_steps_min, high=self._tar_change_steps_max,
                                      size=(n,), device=self.device, dtype=torch.int64)
 
         self._tar_pos[env_ids, :] = rand_pos
         self._tar_change_steps[env_ids] = self.progress_buf[env_ids] + change_steps
+        
+        if (not self.headless):
+            for i in env_ids:
+                self.gym.set_rigid_body_color(self.envs[i], self._marker_handles[i], 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.8, 0.0, 0))
+        
         return
 
     def _compute_task_obs(self, env_ids=None):

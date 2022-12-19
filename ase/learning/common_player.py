@@ -72,6 +72,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
 
         need_init_rnn = self.is_rnn
         for _ in range(n_games):
+            print("GAME NUMBER: ", _)
             if games_played >= n_games:
                 break
 
@@ -140,6 +141,23 @@ class CommonPlayer(players.PpoPlayerContinuous):
                         else:
                             print('reward:', cur_rewards/done_count, 'steps:', cur_steps/done_count)
 
+                    #max_t = 120
+
+                    # in each step calculate metrics score
+                    # compute completion time metric
+                    #task_selected = ['HumanoidAMPGetup', 'HumanoidReach', 'HumanoidLocation']
+                    #task = 'HumanoidAMPGetup'
+                    #if task in task_selected:
+                    #print("metrics to be implemented")
+                    #if self.time < max_t:
+                    #    if not is_done:
+                    #        self.time += 1
+                    #    else:
+                    #        print("completion time metric: ")
+                    #        print(self.time)
+                    #else:
+                    #    print("completion time metric: ")
+                    #    print(self.time)
                     sum_game_res += game_res
                     if batch_size//self.num_agents == 1 or games_played >= n_games:
                         break
@@ -147,6 +165,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
                 done_indices = done_indices[:, 0]
 
         print(sum_rewards)
+        print("Games Played", games_played)
         if print_game_res:
             print('av reward:', sum_rewards / games_played * n_game_life, 'av steps:', sum_steps / games_played * n_game_life, 'winrate:', sum_game_res / games_played * n_game_life)
         else:
