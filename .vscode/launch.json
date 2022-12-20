@@ -4,13 +4,15 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
-
-
-    
-
-
-    
+        {
+            "name": "Python: TFLearningHumanoidAMPGetup",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--task", "HumanoidAMPGetup", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml"]
+        },
 
         {
             "name": "Python: HumanoidAMPGetup",
