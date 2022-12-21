@@ -56,7 +56,7 @@ class HRLPlayer(common_player.CommonPlayer):
         
         self._llc_steps = config['llc_steps']
         llc_checkpoint = config['llc_checkpoint']
-        self.eval = config['eval']
+        self.eval = config.get('eval',False)
         assert(llc_checkpoint != "")
         self._build_llc(llc_config_params, llc_checkpoint)
         
@@ -211,7 +211,7 @@ class HRLPlayer(common_player.CommonPlayer):
         else:
             print('av reward:', sum_rewards / games_played * n_game_life, 'av steps:', sum_steps / games_played * n_game_life)
 
-        if eval:
+        if self.eval:
             #compute metrics
             success_counts = successes.sum().item()
             failure_counts = failures.sum().item()
@@ -236,7 +236,7 @@ class HRLPlayer(common_player.CommonPlayer):
             task_name = self.env.task.cfg["args"].__getattribute__('task')
             
             filename = self.env.task.cfg["env"]["asset"]["assetFileName"]
-            filename = filename.replace("mjcf/", "")
+            filename = filename.replace("mjcf/", "reach_self_trained/")
             file = filename.replace(".xml", "_" + task_name + "_eval.yaml")
 
             data = {'character':filename,

@@ -45,7 +45,7 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
         self._tar_dist_max = cfg["env"]["tarDistMax"]
         self._tar_height_min = cfg["env"]["tarHeightMin"]
         self._tar_height_max = cfg["env"]["tarHeightMax"]
-        self.eval = cfg["env"]["eval"]
+        self.eval = cfg["env"].get("eval",False)
 
         super().__init__(cfg=cfg,
                          sim_params=sim_params,

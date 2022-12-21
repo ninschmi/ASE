@@ -32,8 +32,8 @@ env:
 
   asset:
     assetRoot: "ase/data/assets"
-    #assetFileName: "mjcf/amp_humanoid_sword_shield.xml"
-    assetFileName: "mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_0-5.xml"
+    assetFileName: "mjcf/amp_humanoid_sword_shield.xml"
+    #assetFileName: "mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_0-5.xml"
 
   plane:
     staticFriction: 1.0

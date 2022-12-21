@@ -25,7 +25,7 @@ env:
   asset:
     assetRoot: "ase/data/assets"
     assetFileName: "mjcf/amp_humanoid_sword_shield.xml"
-    #assetFileName: "mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_0-5.xml"
+    #assetFileName: "mjcf/in_distribution/amp_humanoid_sword_shield_arm_0-6034569480535165_leg_0-7766862222755558.xml"
     #assetFileName: "mjcf/arm_leg_parametrization/amp_humanoid_sword_shield_arm_0-5_leg_2-0.xml"
     assetDir: "mjcf/arm_leg_parametrization"
 

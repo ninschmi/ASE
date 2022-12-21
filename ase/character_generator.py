@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import xml.etree.ElementTree as et
+import random
 
 # base character xml file
 filename = 'data/assets/mjcf/amp_humanoid_sword_shield.xml'
@@ -9,10 +10,18 @@ filename = 'data/assets/mjcf/amp_humanoid_sword_shield.xml'
 
 # shape parameterizations
 
+# in distribution samples
+#factors_leg = np.random.uniform(low=0.5, high=2, size=3)
+#factors_arm = np.random.uniform(low=0.5, high=1.5, size=3)
+# out of distribution samples
+factors_leg = np.concatenate((np.random.uniform(low=0.1, high=0.5, size=1),np.random.uniform(low=1.5, high=2, size=1),np.random.uniform(low=2, high=2.5, size=1)))
+factors_arm = np.concatenate((np.random.uniform(low=0.1, high=0.5, size=1),np.random.uniform(low=1.5, high=2, size=1)))
+
+
 # leg length vs. arm length shape parameterization
 # factors: legs: up to 2.0 times longer and 2.0 times shorter; arms: up to 1.5 times longer and 2.0 times shorter 
-factors_leg = np.array([0.5, 0.75, 1, 1.25, 1.5, 1.75, 2])
-factors_arm = np.array([0.5, 0.75, 1, 1.25, 1.5])
+#factors_leg = np.array([0.5, 0.75, 1, 1.25, 1.5, 1.75, 2])
+#factors_arm = np.array([0.5, 0.75, 1, 1.25, 1.5])
 bodies_arms = np.array(['right_upper_arm', 'right_lower_arm', 'right_hand', 'sword', 'left_upper_arm', 'left_lower_arm', 'left_hand', 'shield'])
 bodies_legs = np.array(['right_thigh', 'right_shin', 'right_foot', 'left_thigh', 'left_shin', 'left_foot'])
 tags = np.array(['geom'])
@@ -271,7 +280,7 @@ for factor_arm in factors_arm:
         root.find('.//body[@name="pelvis"]').set('pos', z_pelvis_str)
 
         # generate new mujoco file for each arm and leg modification
-        path = 'data/assets/mjcf/arm_leg_parametrization/'
+        path = 'data/assets/mjcf/out_of_distribution/'
         if not os.path.exists(path):
             os.makedirs(path)
         output_file = 'amp_humanoid_sword_shield_arm_' + str(factor_arm).replace(".", "-") + '_leg_' + str(factor_leg).replace(".","-") + '.xml'

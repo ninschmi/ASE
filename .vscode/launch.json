@@ -52,6 +52,16 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--test", "--task", "HumanoidReach", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_eval.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "ase/data/models/ase_hlc_reach_reallusion_sword_shield.pth", "--headless"]
+        },
+
+        {
+            "name": "Python: HumanoidSelfReachEval",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--num_envs", "16", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_eval.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "output/Humanoid_15-15-25-42/nn/Humanoid.pth", "--headless"]
         }
     ]
 }

@@ -15,7 +15,8 @@ for file in files:
         with open ("ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml", 'w') as f_out:
             yaml.dump(cfg, f_out, sort_keys=False)
         #run run.py with arguments
-        os.system("python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/ase_llc_reallusion_sword_shield.pth --checkpoint ase/data/models/ase_hlc_reach_reallusion_sword_shield.pth --headless")
+        #os.system("python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/ase_llc_reallusion_sword_shield.pth --checkpoint ase/data/models/ase_hlc_reach_reallusion_sword_shield.pth --headless")
+        os.system("python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/ase_llc_reallusion_sword_shield.pth --checkpoint output/Humanoid_15-15-25-42/nn/Humanoid.pth --headless")
         #p = subprocess.Popen("python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/ase_llc_reallusion_sword_shield.pth --checkpoint ase/data/models/ase_hlc_reach_reallusion_sword_shield.pth --headless", stdout=subprocess.PIPE, shell=True)
         #p.wait()
     else:
