@@ -47,6 +47,10 @@ class HumanoidAMPGetup(HumanoidAMP):
         self._recovery_steps = cfg["env"]["recoverySteps"]
         self._fall_init_prob = cfg["env"]["fallInitProb"]
 
+        # trained to GetUp during recovery_steps steps after early termination and reset
+        # evaluate for recovery_steps + 10 steps (time to get up and successfully stand for 10 steps)
+        self._recovery_steps += 10
+
         self._reset_fall_env_ids = []
 
         super().__init__(cfg=cfg,
@@ -57,6 +61,11 @@ class HumanoidAMPGetup(HumanoidAMP):
                          headless=headless)
         
         self._recovery_counter = torch.zeros(self.num_envs, device=self.device, dtype=torch.int)
+
+        if self.eval:
+            self.not_terminated = torch.zeros_like(self._terminate_buf)
+            self.success_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
+            self.failure_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
 
         self._generate_fall_states()
 
@@ -162,14 +171,6 @@ class HumanoidAMPGetup(HumanoidAMP):
         fall_root_states = self._fall_root_states[fall_state_ids]
         dof_pos = self._fall_dof_pos[fall_state_ids]
         dof_vel = self._fall_dof_vel[fall_state_ids]
-        #if self.randomize:
-        #    #make sure character is placed correctly by scaling z component of _fall_root_state by leg's scale factor
-        #    test_0 = to_torch(self._scale_leg, device=self.device)
-        #    test_1 = to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]
-        #    scale_leg_for_envs = to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
-        #    test_3 = fall_root_states[:,2]
-        #    test_4 = torch.mul(fall_root_states[:,2],scale_leg_for_envs)
-        #    fall_root_states[:,2] = torch.mul(fall_root_states[:,2],scale_leg_for_envs)
 
         self._humanoid_root_states[env_ids] = fall_root_states
         self._dof_pos[env_ids] = dof_pos
@@ -180,74 +181,13 @@ class HumanoidAMPGetup(HumanoidAMP):
         self._recovery_counter[env_ids] = self._recovery_steps
         self._reset_fall_env_ids = env_ids
 
-        ##if self.randomize:
-        ##    #avoid jumps
-        ##    #right_hand, sword, left_hand
-        ##    #bodies_sizes = [0.04, 0.11, 0.04]
-        ##    root_rot_expanded = self._humanoid_root_states[env_ids, 3:7].unsqueeze(-2)
-        ##    root_rot_expanded = root_rot_expanded.repeat((1, self._rigid_body_pos.shape[1], 1))
-        ##    new_rigid_body_pos_l = quat_rotate(root_rot_expanded.view(root_rot_expanded.shape[0]*root_rot_expanded.shape[1], root_rot_expanded.shape[2]),self._rigid_body_pos[env_ids,:,:].view(self._rigid_body_pos[env_ids].shape[0]*self._rigid_body_pos[env_ids].shape[1], self._rigid_body_pos[env_ids].shape[2]))
-        ##    new_rigid_body_pos_l = new_rigid_body_pos_l.view(self._rigid_body_pos[env_ids].shape[0],self._rigid_body_pos.shape[1], self._rigid_body_pos.shape[2] )
-        ##    difference = self._humanoid_root_states[env_ids, 2] - new_rigid_body_pos_l[:,0,2]
-        ##    difference_expanded = difference.unsqueeze(-1)
-        ##    new_rigid_body_pos = new_rigid_body_pos_l[:,:,2] + difference_expanded
-        ##    test_0 = torch.min(new_rigid_body_pos, dim=1).values
-        ##    index = torch.min(new_rigid_body_pos, dim=1).indices
-        ##    test_01 = torch.zeros_like(test_0)
-        ##    test_1 = torch.gt(torch.zeros_like(test_0),torch.min(new_rigid_body_pos, dim=1).values)
-        ##    test_2 = torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(new_rigid_body_pos, dim=1).values))
-        ##    if torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(new_rigid_body_pos, dim=1).values))>0:
-        ##        test_4 = torch.clamp_max(torch.min(new_rigid_body_pos, dim=1).values, max=0)
-        ##        self._humanoid_root_states[env_ids, 2] -= torch.clamp_max(torch.min(new_rigid_body_pos, dim=1).values, max=0)
-##
-        ##    env_ids_int32 = self._humanoid_actor_ids[env_ids]
-        ##    self.gym.set_actor_root_state_tensor_indexed(self.sim,
-        ##                                                 gymtorch.unwrap_tensor(self._root_states),
-        ##                                                 gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
-        ##    self.render()
-        ##    self.gym.simulate(self.sim)
-        ##    self.render()
-        ##    self.gym.simulate(self.sim)
-##
-
-        ##    new_diff = new_rigid_body_pos_l[:,:,2] + self._humanoid_root_states[env_ids, 2].unsqueeze(-1)
-
-            #env_ids_int32 = self._humanoid_actor_ids[env_ids]
-            #self.gym.set_actor_root_state_tensor_indexed(self.sim,
-            #                                             gymtorch.unwrap_tensor(self._root_states),
-            #                                             gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
-#   
-            #self.gym.refresh_actor_root_state_tensor(self.sim)
-            #self.gym.refresh_rigid_body_state_tensor(self.sim)
-#   
-            #test_0 = torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values
-            #test_1 = torch.gt(torch.zeros_like(test_0),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values)
-            #test_2 = torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values))>0
-            #if torch.sum(torch.gt(torch.zeros_like(test_0),torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values))>0:
-            #    correction = torch.clamp_min(torch.min(self._rigid_body_pos[env_ids,:,2], dim=1).values, min=0)
-
-
-            #new_root_pos = quat_rotate(self._humanoid_root_states[env_ids, 3:7], self._rigid_body_pos[env_ids,0,:])
-            #if torch.sum(torch.gt(new_root_pos[:,2], self._humanoid_root_states[env_ids,2]))>0:
-            #    correction = new_root_pos[:,2] - self._humanoid_root_states[env_ids,2]
-            #    self._humanoid_root_states[env_ids,2] += correction
-
-            #test_0=self._rigid_body_pos[env_ids,0,2]
-            #test_1=self._humanoid_root_states[env_ids,2]
-            #test_2=torch.gt(self._rigid_body_pos[env_ids,0,2],self._humanoid_root_states[env_ids,2])
-            #test_3=torch.sum(torch.gt(self._rigid_body_pos[env_ids,0,2],self._humanoid_root_states[env_ids,2]))
-            #if torch.sum(torch.gt(self._rigid_body_pos[env_ids,0,2],self._humanoid_root_states[env_ids,2]))>0:
-            #    correction = self._rigid_body_pos[env_ids,0,2] - self._humanoid_root_states[env_ids,2]
-            #    scale = to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
-            #    self._humanoid_root_states[env_ids,2] += correction + 0.89 * to_torch(self._scale_leg, device=self.device)[to_torch(self.env_char_mapping, device=self.device, dtype=torch.long)[env_ids]]
-
-        ##    x_0 = self._rigid_body_pos[env_ids,0,2]
-        ##    x_1 = self._humanoid_root_states[env_ids,2]
-
         return
     
     def _reset_envs(self, env_ids):
         self._reset_fall_env_ids = []
+        # reset self.not_terminated
+        if self.eval:
+            self.not_terminated[env_ids] = torch.zeros_like(self._terminate_buf[env_ids])
         super()._reset_envs(env_ids)
         return
 
@@ -269,5 +209,32 @@ class HumanoidAMPGetup(HumanoidAMP):
 
         is_recovery = self._recovery_counter > 0
         self.reset_buf[is_recovery] = 0
+
+        if self.eval:
+            self.success_envs = torch.zeros_like(self.progress_buf)
+            # when for more than 10 consecutive time steps no early termination, consider GET UP task successfull
+            self.not_terminated += torch.logical_not(self._terminate_buf)
+            self.not_terminated = torch.mul(self.not_terminated, torch.logical_not(self._terminate_buf)) # assures that consecutiveness
+            self.success_envs = torch.where(self.not_terminated >= 10, torch.ones_like(self.progress_buf), self.success_envs) 
+            success_envs_ids = self.success_envs.nonzero(as_tuple=False).flatten()
+            # reset task
+            self.reset_buf[success_envs_ids] = 1 
+            if (not self.headless):
+                for i in success_envs_ids:
+                    self.gym.set_rigid_body_color(self.envs[i], self.humanoid_handles[i], 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.2, 0.1, 0.9))
+                    super().render()
+
+            # when during recovery steps no success is achieved condsider GET UP task as failure
+            is_failure = torch.logical_not(is_recovery)
+            failure_envs_ids = is_failure.nonzero(as_tuple=False).flatten()
+            #check not not failure and success at the same time
+
+            # reset task
+            self.reset_buf[failure_envs_ids] = 1  
+
+            assert self.success_envs.isnan().sum()==0, f"success envs is nan: {self.success_envs.isnan().sum()}"
+            assert self.failure_envs.isnan().sum()==0, f"failure envs is nan: {self.failure_envs.isnan().sum()}"
+        
+        
         self._terminate_buf[is_recovery] = 0
         return

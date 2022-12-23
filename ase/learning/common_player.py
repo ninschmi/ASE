@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import torch 
+import yaml
 
 from rl_games.algos_torch import players
 from rl_games.algos_torch import torch_ext
@@ -47,6 +48,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
         
         net_config = self._build_net_config()
         self._build_net(net_config)   
+        self.eval = self.env.task.eval
         
         return
 
@@ -58,7 +60,8 @@ class CommonPlayer(players.PpoPlayerContinuous):
         sum_rewards = 0
         sum_steps = 0
         sum_game_res = 0
-        n_games = n_games * n_game_life
+        #n_games = n_games * n_game_life
+        n_games = 4096
         games_played = 0
         has_masks = False
         has_masks_func = getattr(self.env, "has_action_mask", None) is not None
@@ -72,9 +75,18 @@ class CommonPlayer(players.PpoPlayerContinuous):
 
         need_init_rnn = self.is_rnn
         for _ in range(n_games):
-            print("GAME NUMBER: ", _)
             if games_played >= n_games:
                 break
+
+                
+            if self.eval:
+                #evaluation metrics
+                successes = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
+                failures = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
+                steps_to_succeed = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
+                success_counts = 0
+                failure_counts = 0
+                completion_time = 0
 
             obs_dict = self.env_reset()
             batch_size = 1
@@ -103,6 +115,15 @@ class CommonPlayer(players.PpoPlayerContinuous):
                 cr += r
                 steps += 1
   
+                #compute total successes and failures over all environements
+                if self.eval:
+                    successes += self.success_counts
+                    assert successes.isnan().sum() == 0, f"successes count is nan: {successes.isnan().sum()}"
+                    failures += self.failure_counts
+                    assert failures.isnan().sum() == 0, f"Failures count is nan: {failures.isnan().sum()}"
+                    #include steps     
+                    steps_to_succeed += self.success_counts.float() * n
+                    assert steps_to_succeed.isnan().sum() == 0, f"hlc_steps_to_succeed is nan: {hlc_steps_to_succeed.isnan().sum()}"
                 self._post_step(info)
 
                 if render:
@@ -165,11 +186,60 @@ class CommonPlayer(players.PpoPlayerContinuous):
                 done_indices = done_indices[:, 0]
 
         print(sum_rewards)
-        print("Games Played", games_played)
         if print_game_res:
             print('av reward:', sum_rewards / games_played * n_game_life, 'av steps:', sum_steps / games_played * n_game_life, 'winrate:', sum_game_res / games_played * n_game_life)
         else:
             print('av reward:', sum_rewards / games_played * n_game_life, 'av steps:', sum_steps / games_played * n_game_life)
+
+        if self.eval:
+            #compute metrics
+            success_counts = successes.sum().item()
+            failure_counts = failures.sum().item()
+            #steps mean (divide steps per env by successes per env and take mean)
+            #steps_per_env = torch.where(successes.bool(), torch.div(hlc_steps_to_succeed, successes).float(), torch.zeros_like(successes))
+            #steps_mean = torch.mean(steps_per_env)
+            #completion time (sum over all steps than divide by success_count)
+            completion_time = steps_to_succeed.sum().item() / success_counts
+
+            #assert steps_per_env.isnan().sum() == 0, f"steps_per_env is nan: {steps_per_env.isnan().sum()}"
+            #assert steps_mean.isnan().sum() == 0, f"steps_mean is nan: {steps_mean.isnan().sum()}"
+
+            evaluation = {'total_successes':success_counts,
+                            'total_failures':failure_counts,
+                            'total_tasks':success_counts +failure_counts,
+                            'average_completion_time':completion_time,
+                            'success_rate':success_counts/(success_counts +failure_counts),
+                            'failure_rate':1-success_counts/(success_counts +failure_counts),
+                            'av_reward':sum_rewards / games_played * n_game_life,
+                            'av steps':sum_steps / games_played * n_game_life}
+
+            task_name = self.env.task.cfg["args"].__getattribute__('task')
+            if task_name == "HumanoidReach":
+                tar_change_steps = 112*2
+            elif task_name == "HumanoidLocation":
+                tar_change_steps = 299
+            else:
+                tar_change_steps = 70
+            
+            filename = self.env.task.cfg["env"]["asset"]["assetFileName"]
+            filename = filename.replace("mjcf/", "")
+            file = filename.replace(".xml", "_" + task_name + "_eval.yaml")
+
+            data = {'character':filename,
+                    'task':task_name,
+                    'numEnvs':self.env.task.cfg["env"]['numEnvs'],
+                    'episodeLength':self.env.task.cfg["env"]['episodeLength'],
+                    'enableEarlyTermination':self.env.task.cfg["env"]['enableEarlyTermination'],
+                    'numGames':n_games,
+                    'GamesPlayed':games_played,
+                    'initState':self.env.task.cfg["env"]['stateInit'],
+                    #'tar_change_step':self.env.task.cfg["env"]['tarChangeStepsMax'],
+                    #'tar_change_step':300,
+                    'tar_change_step':tar_change_steps,
+                    'evaluation':evaluation}
+            with open(file, 'w') as f:
+                yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
 
         return
 
@@ -187,7 +257,14 @@ class CommonPlayer(players.PpoPlayerContinuous):
     def env_step(self, env, actions):
         if not self.is_tensor_obses:
             actions = actions.cpu().numpy()
+        # initializations for evaluation metrics
+        if self.eval:
+            self.success_counts = 0
+            self.failure_counts = 0
         obs, rewards, dones, infos = env.step(actions)
+        if self.eval:
+            self.success_counts += env.task.success_envs
+            self.failure_counts += env.task.failure_envs
 
         if hasattr(obs, 'dtype') and obs.dtype == np.float64:
             obs = np.float32(obs)

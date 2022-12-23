@@ -6,7 +6,7 @@ import subprocess
 # 1: evaluate HumanoidLocation
 # 2: evaluate HumanoidGetUp
 
-eval = 1
+eval = 2
 
 path = "ase/data/assets/mjcf/arm_leg_parametrization/"
 files = os.listdir(path)
@@ -19,8 +19,8 @@ elif eval ==1 :
      cfg_fn = "ase/data/cfg/humanoid_sword_shield_location_eval_param.yaml"
      command = "python ase/run.py --test --task HumanoidLocation --cfg_env ase/data/cfg/humanoid_sword_shield_location_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/ase_llc_reallusion_sword_shield.pth --checkpoint ase/data/models/ase_hlc_location_reallusion_sword_shield.pth --headless"
 else:
-     cfg_fn = ""
-     command = ""
+     cfg_fn = "ase/data/cfg/humanoid_ase_sword_shield_getup_eval_param.yaml"
+     command = "python ase/run.py --test --task HumanoidAMPGetup --cfg_env ase/data/cfg/humanoid_ase_sword_shield_getup_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/ase_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml --checkpoint ase/data/models/ase_llc_reallusion_sword_shield.pth --headless"
 
 for file in files:
     if(os.path.isfile(path + file)):
