@@ -70,6 +70,7 @@ class Humanoid(BaseTask):
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
 
+        self.eval = cfg["env"].get("eval",False)
         self.randomize = self.cfg["task"].get("randomize", False)
          
         super().__init__(cfg=self.cfg)

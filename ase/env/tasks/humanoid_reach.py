@@ -45,7 +45,6 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
         self._tar_dist_max = cfg["env"]["tarDistMax"]
         self._tar_height_min = cfg["env"]["tarHeightMin"]
         self._tar_height_max = cfg["env"]["tarHeightMax"]
-        self.eval = cfg["env"].get("eval",False)
 
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
@@ -56,7 +55,7 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
         
         self._tar_change_steps = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
         self._tar_pos = torch.zeros([self.num_envs, 3], device=self.device, dtype=torch.float)
-        if eval:
+        if self.eval:
             self.success_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
             self.failure_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
 
@@ -142,7 +141,7 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
 
     def _update_task(self):
         reset_task_mask = self.progress_buf >= self._tar_change_steps
-        if eval:
+        if self.eval:
             reach_body_pos = self._rigid_body_pos[:, self._reach_body_id, :]
             pos_diff = self._tar_pos - reach_body_pos
             pos_err = torch.sum(pos_diff * pos_diff, dim=-1)
@@ -174,7 +173,7 @@ class HumanoidReach(humanoid_amp_task.HumanoidAMPTask):
         rand_pos[..., 0:2] = self._tar_dist_max * (2.0 * rand_pos[..., 0:2] - 1.0)
         rand_pos[..., 2] = (self._tar_height_max - self._tar_height_min) * rand_pos[..., 2] + self._tar_height_min
         
-        if eval:
+        if self.eval:
             change_steps = torch.full((n,), 112*2, device=self.device, dtype=torch.int64)
         else:
             change_steps = torch.randint(low=self._tar_change_steps_min, high=self._tar_change_steps_max,

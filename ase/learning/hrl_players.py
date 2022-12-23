@@ -56,7 +56,7 @@ class HRLPlayer(common_player.CommonPlayer):
         
         self._llc_steps = config['llc_steps']
         llc_checkpoint = config['llc_checkpoint']
-        self.eval = config.get('eval',False)
+        self.eval = self.env.task.eval
         assert(llc_checkpoint != "")
         self._build_llc(llc_config_params, llc_checkpoint)
         
@@ -234,9 +234,15 @@ class HRLPlayer(common_player.CommonPlayer):
                             'av steps':sum_steps / games_played * n_game_life}
 
             task_name = self.env.task.cfg["args"].__getattribute__('task')
+            if task_name == "HumanoidReach":
+                tar_change_steps = 112*2
+            elif task_name == "HumanoidLocation":
+                tar_change_steps = 299
+            else:
+                tar_change_steps = 0
             
             filename = self.env.task.cfg["env"]["asset"]["assetFileName"]
-            filename = filename.replace("mjcf/", "reach_self_trained/")
+            filename = filename.replace("mjcf/", "")
             file = filename.replace(".xml", "_" + task_name + "_eval.yaml")
 
             data = {'character':filename,
@@ -248,7 +254,8 @@ class HRLPlayer(common_player.CommonPlayer):
                     'GamesPlayed':games_played,
                     'initState':self.env.task.cfg["env"]['stateInit'],
                     #'tar_change_step':self.env.task.cfg["env"]['tarChangeStepsMax'],
-                    'tar_change_step':112*2,
+                    #'tar_change_step':300,
+                    'tar_change_step':tar_change_steps,
                     'evaluation':evaluation}
             with open(file, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False, sort_keys=False)
@@ -282,7 +289,7 @@ class HRLPlayer(common_player.CommonPlayer):
             disc_rewards += curr_disc_reward
 
             #count succeeded and failed tasks and compute steps for succeeded tasks
-            if eval:
+            if self.eval:
                 self.steps_to_succeed += torch.clamp_min((env.task.success_envs * (t+1) - self.steps_to_succeed), 0)
                 self.llc_success_envs = torch.logical_or(self.llc_success_envs, env.task.success_envs)
                 self.success_counts += env.task.success_envs

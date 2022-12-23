@@ -7,3 +7,6 @@ output/
 log/
 nn/
 arm_leg_parametrization/
+location_evaluation_pre-trained/
+reach_evaluation_self_trained/
+reach_evalution_pre-trained/
