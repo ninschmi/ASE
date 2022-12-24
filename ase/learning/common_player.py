@@ -219,7 +219,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
             elif task_name == "HumanoidLocation":
                 tar_change_steps = 299
             else:
-                tar_change_steps = 70
+                tar_change_steps = 2*25
             
             filename = self.env.task.cfg["env"]["asset"]["assetFileName"]
             filename = filename.replace("mjcf/", "")

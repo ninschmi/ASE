@@ -49,7 +49,7 @@ class HumanoidAMPGetup(HumanoidAMP):
 
         # trained to GetUp during recovery_steps steps after early termination and reset
         # evaluate for recovery_steps + 10 steps (time to get up and successfully stand for 10 steps)
-        self._recovery_steps += 10
+        #self._recovery_steps += 10
 
         self._reset_fall_env_ids = []
 
@@ -225,8 +225,8 @@ class HumanoidAMPGetup(HumanoidAMP):
                     super().render()
 
             # when during recovery steps no success is achieved condsider GET UP task as failure
-            is_failure = torch.logical_not(is_recovery)
-            failure_envs_ids = is_failure.nonzero(as_tuple=False).flatten()
+            self.failure_envs = torch.logical_not(is_recovery)
+            failure_envs_ids = self.failure_envs.nonzero(as_tuple=False).flatten()
             #check not not failure and success at the same time
 
             # reset task

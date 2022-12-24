@@ -11,7 +11,7 @@ env:
   hybridInitProb: 0.5
   numAMPObsSteps: 10
   recoveryEpisodeProb: 0
-  recoverySteps: 60
+  recoverySteps: 50
   fallInitProb: 1
   localRootObs: true
   keyBodies:
