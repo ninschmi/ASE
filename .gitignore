@@ -11,5 +11,5 @@ location_evaluation_pre-trained/
 reach_evaluation_self_trained/
 reach_evalution_pre-trained/
 Evaluation_Location_299/
-getup_evaluation_pre-trained_faulty/
-evaluation_getup_pre-trained_corrected/
+getup_evaluation_pre-trained/
+trained_models_bsv/

@@ -46,8 +46,10 @@ class ASEPlayer(amp_players.AMPPlayerContinuous):
         
         if (hasattr(self, 'env')):
             batch_size = self.env.task.num_envs
+            self.eval = self.env.task.eval
         else:
             batch_size = self.env_info['num_envs']
+            self.eval = False
         self._ase_latents = torch.zeros((batch_size, self._latent_dim), dtype=torch.float32,
                                          device=self.device)
 

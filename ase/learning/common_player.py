@@ -48,8 +48,6 @@ class CommonPlayer(players.PpoPlayerContinuous):
         
         net_config = self._build_net_config()
         self._build_net(net_config)   
-        self.eval = self.env.task.eval
-        
         return
 
     def run(self):
@@ -117,13 +115,13 @@ class CommonPlayer(players.PpoPlayerContinuous):
   
                 #compute total successes and failures over all environements
                 if self.eval:
-                    successes += self.success_counts
+                    successes += self.env.task.success_envs
                     assert successes.isnan().sum() == 0, f"successes count is nan: {successes.isnan().sum()}"
-                    failures += self.failure_counts
+                    failures += self.env.task.failure_envs
                     assert failures.isnan().sum() == 0, f"Failures count is nan: {failures.isnan().sum()}"
                     #include steps     
-                    steps_to_succeed += self.success_counts.float() * n
-                    assert steps_to_succeed.isnan().sum() == 0, f"hlc_steps_to_succeed is nan: {hlc_steps_to_succeed.isnan().sum()}"
+                    steps_to_succeed += self.env.task.success_envs.float() * n
+                    assert steps_to_succeed.isnan().sum() == 0, f"steps_to_succeed is nan: {steps_to_succeed.isnan().sum()}"
                 self._post_step(info)
 
                 if render:
@@ -222,7 +220,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
                 tar_change_steps = 2*25
             
             filename = self.env.task.cfg["env"]["asset"]["assetFileName"]
-            filename = filename.replace("mjcf/", "")
+            filename = filename.replace("mjcf/", "arm_leg_parametrization/")
             file = filename.replace(".xml", "_" + task_name + "_eval.yaml")
 
             data = {'character':filename,
@@ -257,14 +255,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
     def env_step(self, env, actions):
         if not self.is_tensor_obses:
             actions = actions.cpu().numpy()
-        # initializations for evaluation metrics
-        if self.eval:
-            self.success_counts = 0
-            self.failure_counts = 0
         obs, rewards, dones, infos = env.step(actions)
-        if self.eval:
-            self.success_counts += env.task.success_envs
-            self.failure_counts += env.task.failure_envs
 
         if hasattr(obs, 'dtype') and obs.dtype == np.float64:
             obs = np.float32(obs)

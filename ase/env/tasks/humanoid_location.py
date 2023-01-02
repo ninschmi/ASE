@@ -154,7 +154,7 @@ class HumanoidLocation(humanoid_amp_task.HumanoidAMPTask):
                 for i in success_envs_ids:
                     self.gym.set_rigid_body_color(self.envs[i], self._marker_handles[i], 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.2, 0.1, 0.9))
                     super().render()
-            self.failure_envs = reset_task_mask
+            self.failure_envs = torch.where(self.success_envs > 0, torch.zeros_like(reset_task_mask), reset_task_mask)
             rest_env_ids = torch.logical_or(self.success_envs, reset_task_mask).nonzero(as_tuple=False).flatten()
         else:
             rest_env_ids = reset_task_mask.nonzero(as_tuple=False).flatten()

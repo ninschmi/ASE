@@ -226,8 +226,8 @@ class HumanoidAMPGetup(HumanoidAMP):
 
             # when during recovery steps no success is achieved condsider GET UP task as failure
             self.failure_envs = torch.logical_not(is_recovery)
+            self.failure_envs = torch.where(self.success_envs > 0, torch.zeros_like(self.failure_envs), self.failure_envs)
             failure_envs_ids = self.failure_envs.nonzero(as_tuple=False).flatten()
-            #check not not failure and success at the same time
 
             # reset task
             self.reset_buf[failure_envs_ids] = 1  
