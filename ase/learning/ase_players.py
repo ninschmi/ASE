@@ -57,7 +57,7 @@ class ASEPlayer(amp_players.AMPPlayerContinuous):
 
     def run(self):
         self._reset_latent_step_count()
-        super().run()
+        super().run(self.eval)
         return
 
     def get_action(self, obs_dict, is_determenistic=False):

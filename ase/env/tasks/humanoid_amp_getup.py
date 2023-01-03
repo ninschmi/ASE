@@ -66,6 +66,7 @@ class HumanoidAMPGetup(HumanoidAMP):
             self.not_terminated = torch.zeros_like(self._terminate_buf)
             self.success_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
             self.failure_envs = torch.zeros([self.num_envs], device=self.device, dtype=torch.int64)
+            self.games_played_counter = torch.zeros_like(self.progress_buf)
 
         self._generate_fall_states()
 
@@ -77,7 +78,7 @@ class HumanoidAMPGetup(HumanoidAMP):
 
         self._update_recovery_count()
         return
-
+    
     def _generate_fall_states(self):
         max_steps = 150
         # first try to generate random poses from base character and transform them when reset (but hard to find scale factor)
@@ -235,6 +236,15 @@ class HumanoidAMPGetup(HumanoidAMP):
             assert self.success_envs.isnan().sum()==0, f"success envs is nan: {self.success_envs.isnan().sum()}"
             assert self.failure_envs.isnan().sum()==0, f"failure envs is nan: {self.failure_envs.isnan().sum()}"
         
+            #when an episode end; consider it as game played
+            self.games_played_counter += 1
+            game_played = self.games_played_counter >= (self.max_episode_length - 1)
+            self.games_played_count = game_played.sum().item()
+            if self.games_played_count > 0:
+                #when game played ends, env should be reset
+                self.reset_buf[game_played] = 1
+                self.games_played_counter[game_played] = 0
+
         
         self._terminate_buf[is_recovery] = 0
         return

@@ -50,7 +50,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
         self._build_net(net_config)   
         return
 
-    def run(self):
+    def run(self, eval=False):
         n_games = self.games_num
         render = self.render_env
         n_game_life = self.n_game_life
@@ -75,9 +75,8 @@ class CommonPlayer(players.PpoPlayerContinuous):
         for _ in range(n_games):
             if games_played >= n_games:
                 break
-
                 
-            if self.eval:
+            if eval:
                 #evaluation metrics
                 successes = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
                 failures = torch.zeros_like(self.env.task.progress_buf, dtype=torch.float32)
@@ -114,13 +113,13 @@ class CommonPlayer(players.PpoPlayerContinuous):
                 steps += 1
   
                 #compute total successes and failures over all environements
-                if self.eval:
+                if eval:
                     successes += self.env.task.success_envs
                     assert successes.isnan().sum() == 0, f"successes count is nan: {successes.isnan().sum()}"
                     failures += self.env.task.failure_envs
                     assert failures.isnan().sum() == 0, f"Failures count is nan: {failures.isnan().sum()}"
-                    #include steps     
-                    steps_to_succeed += self.env.task.success_envs.float() * n
+                    #include steps 
+                    steps_to_succeed += torch.mul(steps, self.env.task.success_envs)
                     assert steps_to_succeed.isnan().sum() == 0, f"steps_to_succeed is nan: {steps_to_succeed.isnan().sum()}"
                 self._post_step(info)
 
@@ -131,7 +130,10 @@ class CommonPlayer(players.PpoPlayerContinuous):
                 all_done_indices = done.nonzero(as_tuple=False)
                 done_indices = all_done_indices[::self.num_agents]
                 done_count = len(done_indices)
-                games_played += done_count
+                if eval:
+                    games_played += self.env.task.games_played_count
+                else:
+                    games_played += done_count
 
                 if done_count > 0:
                     if self.is_rnn:
@@ -189,7 +191,7 @@ class CommonPlayer(players.PpoPlayerContinuous):
         else:
             print('av reward:', sum_rewards / games_played * n_game_life, 'av steps:', sum_steps / games_played * n_game_life)
 
-        if self.eval:
+        if eval:
             #compute metrics
             success_counts = successes.sum().item()
             failure_counts = failures.sum().item()
@@ -217,10 +219,10 @@ class CommonPlayer(players.PpoPlayerContinuous):
             elif task_name == "HumanoidLocation":
                 tar_change_steps = 299
             else:
-                tar_change_steps = 2*25
+                tar_change_steps = 26*2
             
             filename = self.env.task.cfg["env"]["asset"]["assetFileName"]
-            filename = filename.replace("mjcf/", "arm_leg_parametrization/")
+            filename = filename.replace("mjcf/", "")
             file = filename.replace(".xml", "_" + task_name + "_eval.yaml")
 
             data = {'character':filename,

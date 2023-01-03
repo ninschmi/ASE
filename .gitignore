@@ -7,9 +7,7 @@ output/
 log/
 nn/
 arm_leg_parametrization/
-location_evaluation_pre-trained/
-reach_evaluation_self_trained/
-reach_evalution_pre-trained/
-Evaluation_Location_299/
-getup_evaluation_pre-trained/
 trained_models_bsv/
+old_evaluation/
+evaluation_pre-trained/
+evaluation_uniform-trained/
