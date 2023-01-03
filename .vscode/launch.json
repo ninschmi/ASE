@@ -15,6 +15,16 @@
         },
 
         {
+            "name": "Python: AdaptiveTFLearningHumanoidAMPGetup",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--task", "HumanoidAMPGetup", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup_dr_for_tfl_adaptive.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml"]
+        },
+
+        {
             "name": "Python: TFLearningHumanoidAMPGetupEval",
             "type": "python",
             "request": "launch",

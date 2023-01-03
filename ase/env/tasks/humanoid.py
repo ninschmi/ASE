@@ -36,6 +36,7 @@ from isaacgym.torch_utils import *
 import torch
 import random
 import xml.etree.ElementTree as et
+import yaml
 
 from utils import torch_utils
 
@@ -72,6 +73,7 @@ class Humanoid(BaseTask):
 
         self.eval = cfg["env"].get("eval",False)
         self.randomize = self.cfg["task"].get("randomize", False)
+        self.adaptive = self.cfg["task"].get("adaptiveSampling", False)
          
         super().__init__(cfg=self.cfg)
         
@@ -268,10 +270,13 @@ class Humanoid(BaseTask):
         if self.randomize:
             asset_dir = self.cfg["env"]["asset"]["assetDir"]
             asset_dir_path = os.path.join(asset_root, asset_dir)
+            if self.adaptive:
+                weights_path = self.cfg["task"].get("weightsPath", "")
             if os.path.isdir(asset_dir_path):
                 self.asset_files = []
                 self._scale_arm = []
                 self._scale_leg = []
+                self.performance_weights = []
                 for num,file in enumerate(os.listdir(asset_dir_path)):
                     asset_path = os.path.join(asset_dir_path, file)
                     if os.path.isfile(asset_path) and file.endswith('.xml'):
@@ -285,8 +290,22 @@ class Humanoid(BaseTask):
                         self._scale_leg.append(float(factors[1]))
                         if float(factors[0]) == 1 and float(factors[1]) == 1:
                             self.base_char_idx = num
+
+                        # if characters are adaptively sampled
+                        # retrieve weights for each character from given path
+                        if self.adaptive:
+                            weights_file = "".join([weights_path, "/" ,filename])
+                            weights_file = weights_file.replace(".xml","_HumanoidAMPGetup_eval.yaml")
+                            if os.path.exists(weights_file):
+                                with open(weights_file, 'r') as f:
+                                    data = yaml.load(f, Loader=yaml.FullLoader)
+                                    self.performance_weights.append(float(data["evaluation"]["success_rate"]))
+                            else:
+                                print("Invalid weights file: {s}".format(weights_file))
+                                assert(False)
+                            
                     else:
-                        print("Invalid file: {s}".format(file))
+                        print("Invalid character file: {s}".format(file))
                         assert(False)
             else:
                 print("Could not find asset directory: {s}".format(asset_dir_path))
@@ -365,23 +384,46 @@ class Humanoid(BaseTask):
             if torch.unique(torch.cat(motor_efforts_arr, dim=0), dim=0).size(0)!=1 or len(set(num_bodies_arr))!=1 or len(set(num_dof_arr))!=1 or len(set(num_joints_arr))!=1:
                 print("Humanoid assets for Domain Randomization vary in motor efforts, number of bodies, number of dofs or number of joints.")
                 assert(False)
-            # determine which character is placed into which environment
             self.num_chars = len(self.asset_files)
             self.env_char_mapping = np.empty((self.num_envs), dtype=int)
-            self.envs_per_file = self.num_envs//self.num_chars
-            rest = self.num_envs%self.num_chars
             self.char_env_mapping = [[] for _ in range(self.num_chars)]  # remember all environments a character occurs in
-            self.num_envs_per_char = self.envs_per_file * np.ones((self.num_chars,), dtype=int)        
+            # determine which character is placed into which environment
+            if self.adaptive:
+                weights = np.array(self.performance_weights)
+                # weights for high performance values should be low (less likely to be sampled)
+                # weights for low performance values should be high (more likely to be sampled)
+                # use exponential function on negative success rate (high values ~1 approach exp(-1) ~1/3 and low values ~0 approach exp(0) = 1)
+                self.adaptive_weights = np.exp(-weights)
+                #normalize to make sure its a probability vector
+                self.adaptive_weights = self.adaptive_weights/np.sum(self.adaptive_weights, axis=0)
+                print(self.adaptive_weights)
+                self.env_char_mapping = np.random.choice(35, size=self.num_envs, replace=True, p=self.adaptive_weights)
+                # remember all environments a character occurs in
+                self.num_envs_per_char = 0 * np.ones((self.num_chars,), dtype=int)  
+                for k in range(self.num_envs):
+                    self.char_env_mapping[self.env_char_mapping[k]].append(k)
+                    self.num_envs_per_char[self.env_char_mapping[k]] += 1
 
-            if(self.envs_per_file != 0):
-                self.env_char_mapping[:self.num_chars*self.envs_per_file] = np.floor_divide(np.arange(0,self.num_chars*self.envs_per_file), self.envs_per_file)
-                for i in range(self.num_chars):
-                    self.char_env_mapping[i] = (list(range(i*self.envs_per_file,(i+1)*self.envs_per_file)))
-            self.env_char_mapping[self.num_chars*self.envs_per_file:] = random.sample(np.arange(0,self.num_chars).tolist(), rest)
-            for j in range(rest):
-                index = self.num_chars*self.envs_per_file+j
-                self.char_env_mapping[self.env_char_mapping[index]].append(index)
-                self.num_envs_per_char[self.env_char_mapping[index]] += 1
+                print(self.num_envs_per_char)
+                with open("adaptive_tf_learning_files.yaml", 'w') as f:
+                    yaml.dump({'asset_files':self.asset_files}, f, default_flow_style=False, sort_keys=False)
+                np.savetxt("adaptive_tf_learning_weights",self.adaptive_weights)
+                with open("adaptive_tf_learning_num_envs_per_char.yaml", 'w') as f:
+                    for num_char in self.num_envs_per_char:
+                        f.write(f'{num_char}\n')
+            else:
+                self.envs_per_file = self.num_envs//self.num_chars
+                rest = self.num_envs%self.num_chars
+                self.num_envs_per_char = self.envs_per_file * np.ones((self.num_chars,), dtype=int)        
+                if(self.envs_per_file != 0):
+                    self.env_char_mapping[:self.num_chars*self.envs_per_file] = np.floor_divide(np.arange(0,self.num_chars*self.envs_per_file), self.envs_per_file)
+                    for i in range(self.num_chars):
+                        self.char_env_mapping[i] = (list(range(i*self.envs_per_file,(i+1)*self.envs_per_file)))
+                self.env_char_mapping[self.num_chars*self.envs_per_file:] = random.sample(np.arange(0,self.num_chars).tolist(), rest)
+                for j in range(rest):
+                    index = self.num_chars*self.envs_per_file+j
+                    self.char_env_mapping[self.env_char_mapping[index]].append(index)
+                    self.num_envs_per_char[self.env_char_mapping[index]] += 1
         
         else:
             humanoid_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
