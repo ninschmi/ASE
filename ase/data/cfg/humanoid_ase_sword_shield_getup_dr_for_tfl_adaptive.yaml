@@ -37,7 +37,7 @@ env:
 task:
     randomize: True
     adaptiveSampling: True
-    weightsPath: "/local/home/ninschmi/ASE/evaluation_uniform-trained/getup_evaluation_uniform-trained"
+    weightsPath: "/local/home/ninschmi/ASE/getup_evaluation_uniform-trained"
 
 sim:
   substeps: 2
