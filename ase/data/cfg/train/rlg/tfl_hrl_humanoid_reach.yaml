@@ -52,9 +52,10 @@ params:
     learning_rate: 2e-5
     lr_schedule: constant
     score_to_win: 20000
-    max_epochs: 10000
+    max_epochs: 18550
     save_best_after: 10
     save_frequency: 50
+    save_intermediate: True
     print_stats: True
     grad_norm: 1.0
     entropy_coef: 0.0
