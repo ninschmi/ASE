@@ -226,7 +226,8 @@ class ASEAgent(amp_agent.AMPAgent):
             'amp_obs' : amp_obs,
             'amp_obs_replay' : amp_obs_replay,
             'amp_obs_demo' : amp_obs_demo,
-            'ase_latents': ase_latents
+            'ase_latents': ase_latents,
+            'batch_shape_parameters': input_dict['batch_shape_parameters']
         }
 
         rnn_masks = None
@@ -281,7 +282,7 @@ class ASEAgent(amp_agent.AMPAgent):
                  + self._disc_coef * disc_loss + self._enc_coef * enc_loss
             
             if (self._enable_amp_diversity_bonus()):
-                diversity_loss = self._diversity_loss(batch_dict['obs'], mu, batch_dict['ase_latents'])
+                diversity_loss = self._diversity_loss(batch_dict['obs'], mu, batch_dict['ase_latents'], batch_dict['batch_shape_parameters'])
                 diversity_loss = torch.sum(rand_action_mask * diversity_loss) / rand_action_sum
                 loss += self._amp_diversity_bonus * diversity_loss
                 a_info['amp_diversity_loss'] = diversity_loss
@@ -348,6 +349,51 @@ class ASEAgent(amp_agent.AMPAgent):
 
         return obs
 
+    def set_weights(self, weights):
+        #if len(weights['model']) < 51 and self._mlp_correct:
+        #APPROACH 1
+        #    x = weights['model']
+        #    self.model.a2c_network.actor_mlp.load_state_dict(weights['model']['a2c_network.actor_mlp'])
+        #    self.model.a2c_network.critic_mlp.load_state_dict(weights['model']['a2c_network.critic_mlp'])
+        #    self.model.a2c_network.value.load_state_dict(weights['model']['a2c_network.value'])
+        #    if self.model.a2c_network.is_discrete:
+        #        self.model.a2c_network.logits.load_state_dict(weights['model']['a2c_network.logits'])
+        #    if self.model.a2c_network.is_multi_discrete:
+        #        self.model.a2c_network.logits.load_state_dict(weights['model']['a2c_network.logits'])
+        #    if self.model.a2c_network.is_continuous:
+        #        self.model.a2c_network.mu.load_state_dict(weights['model']['a2c_network.mu'])
+        #        self.model.a2c_network.sigma.load_state_dict(weights['model']['a2c_network.sigma'])
+        #    self.model.a2c_network._disc_mlp.load_state_dict(weights['model']['a2c_network._disc_mlp'])
+        #    self.model.a2c_network._disc_logits.load_state_dict(weights['model']['a2c_network._disc_logits'])
+        #    self.model.a2c_network._enc_mlp.load_state_dict(weights['model']['a2c_network._enc_mlp'])
+        #    self.model.a2c_network._enc.load_state_dict(weights['model']['a2c_network._enc'])
+        #    self.set_stats_weights(weights)
+
+        #    new_weights = self.model.state_dict()
+        #    loaded_weights = weights['model']
+        #    for i,element in enumerate(new_weights['model']):
+        #        if element not in loaded_weights.keys():
+        #            loaded_weights.insert(i,)
+
+        # APPROACH 2
+        #    self.model.load_state_dict(weights['model'])
+        #    self.set_stats_weights(weights)
+        #    x = self.model.a2c_network.state_dict()
+        #    weights['model']['a2c_network']['actor_corr_mlp'] = self.model.a2c_network.actor_corr_mlp.state_dict()
+        #    weights['model']['a2c_network']['critic_corr_mlp'] = self.model.a2c_network.critic_corr_mlp.state_dict()
+        #    weights['model']['a2c_network']['value_corr'] = self.model.a2c_network.value_corr.state_dict()
+        #    weights['model']['a2c_network']['mu_corr'] = self.model.a2c_network.mu_corr.state_dict()
+        #else:
+        #    super().set_weights(weights)
+
+        if len(weights['model']) < 51 and self._mlp_correct:
+            self.model.load_state_dict(weights['model'], strict=False)
+            self.set_stats_weights(weights, strict=False)
+
+        else:
+            super().set_weights(weights)
+        return
+
     def _reset_latent_step_count(self, env_ids):
         self._latent_reset_steps[env_ids] = torch.randint_like(self._latent_reset_steps[env_ids], low=self._latent_steps_min, 
                                                          high=self._latent_steps_max)
@@ -370,11 +416,14 @@ class ASEAgent(amp_agent.AMPAgent):
 
         self._enc_reward_w = config['enc_reward_w']
 
+        self._mlp_correct = self.network.network_builder.params.get('ac_corr', False)
         return
     
     def _build_net_config(self):
         config = super()._build_net_config()
         config['ase_latent_shape'] = (self._latent_dim,)
+        if self._mlp_correct:
+            config['scale_factors'] = self.vec_env.env.task.get_scale_factors()
         return config
 
     def _reset_latents(self, env_ids):
@@ -406,8 +455,8 @@ class ASEAgent(amp_agent.AMPAgent):
 
         return
 
-    def _eval_actor(self, obs, ase_latents):
-        output = self.model.a2c_network.eval_actor(obs=obs, ase_latents=ase_latents)
+    def _eval_actor(self, obs, ase_latents, batch_shape_parameters):
+        output = self.model.a2c_network.eval_actor(obs=obs, ase_latents=ase_latents, batch_shape_parameters=batch_shape_parameters)
         return output
 
     def _eval_critic(self, obs_dict, ase_latents):
@@ -470,14 +519,14 @@ class ASEAgent(amp_agent.AMPAgent):
 
         return enc_info
 
-    def _diversity_loss(self, obs, action_params, ase_latents):
+    def _diversity_loss(self, obs, action_params, ase_latents, batch_shape_parameters):
         assert(self.model.a2c_network.is_continuous)
 
         n = obs.shape[0]
         assert(n == action_params.shape[0])
 
         new_z = self._sample_latents(n)
-        mu, sigma = self._eval_actor(obs=obs, ase_latents=new_z)
+        mu, sigma = self._eval_actor(obs=obs, ase_latents=new_z, batch_shape_parameters=batch_shape_parameters)
 
         clipped_action_params = torch.clamp(action_params, -1.0, 1.0)
         clipped_mu = torch.clamp(mu, -1.0, 1.0)

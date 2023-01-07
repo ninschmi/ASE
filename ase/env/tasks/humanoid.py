@@ -151,6 +151,11 @@ class Humanoid(BaseTask):
         num_actors = self._root_states.shape[0] // self.num_envs
         return num_actors
 
+    def get_scale_factors(self):
+        scale_arm = to_torch(np.array(self._scale_arm)[self.env_char_mapping], requires_grad=False)
+        scale_leg = to_torch(np.array(self._scale_leg)[self.env_char_mapping], requires_grad=False)
+        return torch.stack([scale_arm, scale_leg], dim=-1)
+
     def create_sim(self):
         self.up_axis_idx = self.set_sim_params_up_axis(self.sim_params, 'z')
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
