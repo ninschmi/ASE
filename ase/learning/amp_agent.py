@@ -79,10 +79,10 @@ class AMPAgent(common_agent.CommonAgent):
         
         return state
 
-    def set_stats_weights(self, weights, strict=True):
-        super().set_stats_weights(weights, strict)
+    def set_stats_weights(self, weights):
+        super().set_stats_weights(weights)
         if self._normalize_amp_input:
-            self._amp_input_mean_std.load_state_dict(weights['amp_input_mean_std'], strict)
+            self._amp_input_mean_std.load_state_dict(weights['amp_input_mean_std'])
         
         return
 
@@ -244,12 +244,10 @@ class AMPAgent(common_agent.CommonAgent):
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
 
-        batch_env_ids = torch.floor_divide(torch.arange(0,self.num_actors*self.horizon_length), self.horizon_length)
-        scale_factors = self.vec_env.env.task.get_scale_factors()
-        batch_shape_parameters = scale_factors[batch_env_ids]
-        self.dataset.values_dict["batch_shape_parameters"] = batch_shape_parameters    
-        #batch_shape_parameters = torch.vstack([torch.arange((self.num_actors))] * self.horizon_length).T.reshape(-1).numpy()
-        #self.dataset.values_dict["batch_shape_parameters"] = batch_shape_parameters    
+        if self._mlp_correct:
+            batch_env_ids = torch.floor_divide(torch.arange(0,self.num_actors*self.horizon_length), self.horizon_length)
+            batch_shape_parameters = self.scale_factors[batch_env_ids]
+            self.dataset.values_dict["batch_shape_parameters"] = batch_shape_parameters    
 
         for _ in range(0, self.mini_epochs_num):
             ep_kls = []
@@ -455,7 +453,8 @@ class AMPAgent(common_agent.CommonAgent):
         config = super()._build_net_config()
         config['amp_input_shape'] = self._amp_observation_space.shape
         if self._mlp_correct:
-            config['scale_factors'] = self.vec_env.env.task.get_scale_factors()
+            self.scale_factors = self.vec_env.env.task.get_scale_factors()
+            config['scale_factors'] = self.scale_factors
         return config
     
     def _build_rand_action_probs(self):

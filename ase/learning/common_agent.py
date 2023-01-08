@@ -181,24 +181,13 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
                 update_time = 0
         return
-    
-    def set_stats_weights(self, weights, strict=True):
-        if self.normalize_input:
-            self.running_mean_std.load_state_dict(weights['running_mean_std'], strict)
-        if self.normalize_value:
-            self.value_mean_std.load_state_dict(weights['reward_mean_std'],strict)
-        if self.has_central_value:
-            self.central_value_net.set_stats_weights(weights['assymetric_vf_mean_std'],strict)
-        if self.mixed_precision and 'scaler' in weights:
-            self.scaler.load_state_dict(weights['scaler'],strict)
 
     def set_full_state_weights(self, weights):
         self.set_weights(weights)
-        strict =  not self.model.a2c_network.mlp_correct
         self.epoch_num = weights['epoch']
         if self.has_central_value:
-            self.central_value_net.load_state_dict(weights['assymetric_vf_nets'], strict)
-        if strict:
+            self.central_value_net.load_state_dict(weights['assymetric_vf_nets'])
+        if len(weights['model']) < 51 and not self.model.a2c_network.mlp_correct:
             self.optimizer.load_state_dict(weights['optimizer'])
         self.frame = weights.get('frame', 0)
         self.last_mean_rewards = weights.get('last_mean_rewards', -100500)

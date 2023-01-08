@@ -117,7 +117,7 @@ class ASEBuilder(amp_network_builder.AMPBuilder):
             self.critic_mlp.init_params()
 
             if self.mlp_correct:
-                self.residual_weight = 0.5
+                self.residual_weight = 0.25
                 self.actor_corr_mlp.init_params()
                 self.critic_corr_mlp.init_params()
 
@@ -180,7 +180,6 @@ class ASEBuilder(amp_network_builder.AMPBuilder):
             if self.mlp_correct:
                 c_out = self.critic_corr_mlp(value, batch_shape_parameters)
                 value_corrected = self.value_act(self.value_corr(c_out))
-                value = self.value_act(self.value_corr(c_out))
                 value = (1-self.residual_weight) * value + self.residual_weight * value_corrected
             return value
 
@@ -209,7 +208,6 @@ class ASEBuilder(amp_network_builder.AMPBuilder):
                 mu = self.mu_act(self.mu(a_out))
                 if self.mlp_correct:
                     a_out = self.actor_corr_mlp(mu, batch_shape_parameters)
-                    #mu = self.mu_act(self.mu_corr(a_out))
                     mu_corrected = self.mu_act(self.mu_corr(a_out))
                     mu = (1-self.residual_weight)* mu + self.residual_weight* mu_corrected
                 if self.space_config['fixed_sigma']:
@@ -320,6 +318,14 @@ class ASEBuilder(amp_network_builder.AMPBuilder):
                 self.toggle = not self.toggle
                 self.actor_corr_mlp.requires_grad_(self.toggle)
                 self.critic_corr_mlp.requires_grad_(not self.toggle)
+                
+                self.value_corr.requires_grad_(not self.toggle)
+                if self.is_discrete:
+                    self.logits_corr.requires_grad_(self.toggle)
+                if self.is_multi_discrete:
+                    [layer.requires_grad_(self.toggle) for layer in self.logits_corr]
+                if self.is_continuous:
+                    self.mu_corr.requires_grad_(self.toggle)
 
     def build(self, name, **kwargs):
         net = ASEBuilder.Network(self.params, **kwargs)

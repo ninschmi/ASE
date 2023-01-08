@@ -96,6 +96,8 @@ class ASEPlayer(amp_players.AMPPlayerContinuous):
     def _build_net_config(self):
         config = super()._build_net_config()
         config['ase_latent_shape'] = (self._latent_dim,)
+        if self._mlp_correct:
+            config['scale_factors'] = self.env.task.get_scale_factors()
         return config
     
     def _reset_latents(self, done_env_ids=None):
