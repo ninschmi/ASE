@@ -23,6 +23,16 @@
             "justMyCode": false,
             "args": ["--task", "HumanoidReach", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_hrl_humanoid_reach.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy"]
         },
+
+        {
+            "name": "Python: TFLearningHumanoidLocation",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--task", "HumanoidLocation", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_hrl_humanoid_location.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy"]
+        },
             
         {
             "name": "Python: AdaptiveTFLearningHumanoidAMPGetup",
