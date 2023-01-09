@@ -11,3 +11,4 @@ trained_models_bsv/
 old_evaluation/
 evaluation_pre-trained/
 evaluation_uniform-trained/
+evaluation_adaptive-sampling-trained/
