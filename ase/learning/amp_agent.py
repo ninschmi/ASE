@@ -244,6 +244,11 @@ class AMPAgent(common_agent.CommonAgent):
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
 
+        if self._mlp_correct:
+            batch_env_ids = torch.floor_divide(torch.arange(0,self.num_actors*self.horizon_length), self.horizon_length)
+            batch_shape_parameters = self.scale_factors[batch_env_ids]
+            self.dataset.values_dict["batch_shape_parameters"] = batch_shape_parameters    
+
         for _ in range(0, self.mini_epochs_num):
             ep_kls = []
             for i in range(len(self.dataset)):
@@ -442,11 +447,16 @@ class AMPAgent(common_agent.CommonAgent):
         self._disc_weight_decay = config['disc_weight_decay']
         self._disc_reward_scale = config['disc_reward_scale']
         self._normalize_amp_input = config.get('normalize_amp_input', True)
+        self.scale_factors = config.get('scale_factors', None)
         return
 
     def _build_net_config(self):
         config = super()._build_net_config()
         config['amp_input_shape'] = self._amp_observation_space.shape
+        if self._mlp_correct:
+            if self.scale_factors is None:
+                self.scale_factors = self.vec_env.env.task.get_scale_factors()
+            config['scale_factors'] = self.scale_factors
         return config
     
     def _build_rand_action_probs(self):

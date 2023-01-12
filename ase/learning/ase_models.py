@@ -54,3 +54,10 @@ class ModelASEContinuous(amp_models.ModelAMPContinuous):
                 result["enc_pred"] = enc_pred
 
             return result
+
+        def load_state_dict(self, state_dict):
+            strict = True
+            if (len(state_dict) < 51 and self.a2c_network.mlp_correct) or (not (len(state_dict) < 51) and not self.a2c_network.mlp_correct):
+                strict = False
+            super().load_state_dict(state_dict, strict)
+            return

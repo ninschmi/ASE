@@ -187,7 +187,8 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.epoch_num = weights['epoch']
         if self.has_central_value:
             self.central_value_net.load_state_dict(weights['assymetric_vf_nets'])
-        self.optimizer.load_state_dict(weights['optimizer'])
+        if (len(weights['model']) < 51) ^ self.model.a2c_network.mlp_correct:
+            self.optimizer.load_state_dict(weights['optimizer'])
         self.frame = weights.get('frame', 0)
         self.last_mean_rewards = weights.get('last_mean_rewards', -100500)
 

@@ -42,6 +42,8 @@ class ASEPlayer(amp_players.AMPPlayerContinuous):
 
         self._enc_reward_scale = config['enc_reward_scale']
 
+        self.scale_factors = config.get('scale_factors', None)
+
         super().__init__(config)
         
         if (hasattr(self, 'env')):
@@ -96,6 +98,11 @@ class ASEPlayer(amp_players.AMPPlayerContinuous):
     def _build_net_config(self):
         config = super()._build_net_config()
         config['ase_latent_shape'] = (self._latent_dim,)
+        self._mlp_correct = self.network.network_builder.params.get('ac_corr', False)
+        if self._mlp_correct:
+            if self.scale_factors is None:
+                self.scale_factors = self.env.task.get_scale_factors()
+            config['scale_factors'] = self.scale_factors
         return config
     
     def _reset_latents(self, done_env_ids=None):

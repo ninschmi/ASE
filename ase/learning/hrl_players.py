@@ -51,6 +51,8 @@ class HRLPlayer(common_player.CommonPlayer):
             self._latent_dim = llc_config_params['config']['latent_dim']
         
         super().__init__(config)
+
+        self.model.a2c_network.mlp_correct = False
         
         self._task_size = self.env.task.get_task_obs_size()
         
@@ -341,6 +343,7 @@ class HRLPlayer(common_player.CommonPlayer):
         config = config_params['config']
         config['network'] = network
         config['env_info'] = llc_env_info
+        config['scale_factors'] = self.env.task.get_scale_factors()
 
         return config
 

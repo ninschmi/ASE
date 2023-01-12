@@ -229,6 +229,9 @@ class ASEAgent(amp_agent.AMPAgent):
             'ase_latents': ase_latents
         }
 
+        if self._mlp_correct:
+            batch_dict['batch_shape_parameters'] = input_dict['batch_shape_parameters']
+
         rnn_masks = None
         if self.is_rnn:
             rnn_masks = input_dict['rnn_masks']
@@ -281,7 +284,10 @@ class ASEAgent(amp_agent.AMPAgent):
                  + self._disc_coef * disc_loss + self._enc_coef * enc_loss
             
             if (self._enable_amp_diversity_bonus()):
-                diversity_loss = self._diversity_loss(batch_dict['obs'], mu, batch_dict['ase_latents'])
+                if self._mlp_correct:
+                    diversity_loss = self._diversity_loss(batch_dict['obs'], mu, batch_dict['ase_latents'], batch_dict['batch_shape_parameters'])
+                else: 
+                    diversity_loss = self._diversity_loss(batch_dict['obs'], mu, batch_dict['ase_latents'])
                 diversity_loss = torch.sum(rand_action_mask * diversity_loss) / rand_action_sum
                 loss += self._amp_diversity_bonus * diversity_loss
                 a_info['amp_diversity_loss'] = diversity_loss
@@ -370,6 +376,7 @@ class ASEAgent(amp_agent.AMPAgent):
 
         self._enc_reward_w = config['enc_reward_w']
 
+        self._mlp_correct = self.network.network_builder.params.get('ac_corr', False)
         return
     
     def _build_net_config(self):
@@ -406,8 +413,8 @@ class ASEAgent(amp_agent.AMPAgent):
 
         return
 
-    def _eval_actor(self, obs, ase_latents):
-        output = self.model.a2c_network.eval_actor(obs=obs, ase_latents=ase_latents)
+    def _eval_actor(self, obs, ase_latents, batch_shape_parameters=None):
+        output = self.model.a2c_network.eval_actor(obs=obs, ase_latents=ase_latents, batch_shape_parameters=batch_shape_parameters)
         return output
 
     def _eval_critic(self, obs_dict, ase_latents):
@@ -470,14 +477,14 @@ class ASEAgent(amp_agent.AMPAgent):
 
         return enc_info
 
-    def _diversity_loss(self, obs, action_params, ase_latents):
+    def _diversity_loss(self, obs, action_params, ase_latents, batch_shape_parameters=None):
         assert(self.model.a2c_network.is_continuous)
 
         n = obs.shape[0]
         assert(n == action_params.shape[0])
 
         new_z = self._sample_latents(n)
-        mu, sigma = self._eval_actor(obs=obs, ase_latents=new_z)
+        mu, sigma = self._eval_actor(obs=obs, ase_latents=new_z, batch_shape_parameters=batch_shape_parameters)
 
         clipped_action_params = torch.clamp(action_params, -1.0, 1.0)
         clipped_mu = torch.clamp(mu, -1.0, 1.0)
