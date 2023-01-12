@@ -480,10 +480,9 @@ class CorrectionNet(torch.nn.Module):
 
         return
 
-    def forward(self, input, batch_env_ids):
-        if batch_env_ids is not None:      #shape_parameter.shape[0] != batch_size:
-            #shape_parameter = self.shape_parameter[batch_env_ids]
-            shape_parameter = batch_env_ids
+    def forward(self, input, batch_scale_factors):
+        if batch_scale_factors is not None:
+            shape_parameter = batch_scale_factors
         else:
             shape_parameter = self.shape_parameter
         input_mlp = torch.cat([input, shape_parameter], dim=-1)
