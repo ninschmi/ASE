@@ -447,13 +447,15 @@ class AMPAgent(common_agent.CommonAgent):
         self._disc_weight_decay = config['disc_weight_decay']
         self._disc_reward_scale = config['disc_reward_scale']
         self._normalize_amp_input = config.get('normalize_amp_input', True)
+        self.scale_factors = config.get('scale_factors', None)
         return
 
     def _build_net_config(self):
         config = super()._build_net_config()
         config['amp_input_shape'] = self._amp_observation_space.shape
         if self._mlp_correct:
-            self.scale_factors = self.vec_env.env.task.get_scale_factors()
+            if self.scale_factors is None:
+                self.scale_factors = self.vec_env.env.task.get_scale_factors()
             config['scale_factors'] = self.scale_factors
         return config
     

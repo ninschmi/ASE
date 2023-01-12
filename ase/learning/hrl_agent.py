@@ -61,6 +61,8 @@ class HRLAgent(common_agent.CommonAgent):
         
         super().__init__(base_name, config)
 
+        self.model.a2c_network.mlp_correct = False
+
         self._task_size = self.vec_env.env.task.get_task_obs_size()
         
         self._llc_steps = config['llc_steps']
@@ -253,6 +255,7 @@ class HRLAgent(common_agent.CommonAgent):
         config['num_actors'] = self.num_actors
         config['features'] = {'observer' : self.algo_observer}
         config['env_info'] = llc_env_info
+        config['scale_factors'] = self.vec_env.env.task.get_scale_factors()
 
         return config
 
