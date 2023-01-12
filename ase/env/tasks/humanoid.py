@@ -300,7 +300,7 @@ class Humanoid(BaseTask):
                         # retrieve weights for each character from given path
                         if self.adaptive:
                             weights_file = "".join([weights_path, "/" ,filename])
-                            weights_file = weights_file.replace(".xml","_HumanoidAMPGetup_eval.yaml")
+                            weights_file = weights_file.replace(".xml","_HumanoidReach_eval.yaml")
                             if os.path.exists(weights_file):
                                 with open(weights_file, 'r') as f:
                                     data = yaml.load(f, Loader=yaml.FullLoader)
@@ -410,10 +410,10 @@ class Humanoid(BaseTask):
                     self.num_envs_per_char[self.env_char_mapping[k]] += 1
 
                 print(self.num_envs_per_char)
-                with open("adaptive_tf_learning_files.yaml", 'w') as f:
+                with open("adaptive_tf_learning_reach_files.yaml", 'w') as f:
                     yaml.dump({'asset_files':self.asset_files}, f, default_flow_style=False, sort_keys=False)
-                np.savetxt("adaptive_tf_learning_weights",self.adaptive_weights)
-                with open("adaptive_tf_learning_num_envs_per_char.yaml", 'w') as f:
+                np.savetxt("adaptive_tf_learning_reach_weights",self.adaptive_weights)
+                with open("adaptive_tf_learning_reach_num_envs_per_char.yaml", 'w') as f:
                     for num_char in self.num_envs_per_char:
                         f.write(f'{num_char}\n')
             else:

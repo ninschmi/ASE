@@ -23,6 +23,16 @@
             "justMyCode": false,
             "args": ["--task", "HumanoidReach", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_hrl_humanoid_reach.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy"]
         },
+
+        {
+            "name": "Python: TFLearningHumanoidLocation",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--task", "HumanoidLocation", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_hrl_humanoid_location.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy"]
+        },
             
         {
             "name": "Python: AdaptiveTFLearningHumanoidAMPGetup",
@@ -33,7 +43,27 @@
             "justMyCode": false,
             "args": ["--task", "HumanoidAMPGetup", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup_dr_for_tfl_adaptive.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml"]
         },
-
+        
+        {
+            "name": "Python: AdaptiveTFLearningHumanoidReach",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+             "args": ["--task", "HumanoidReach", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_dr_for_tfl_adaptive.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_hrl_humanoid_reach.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy"]
+        },
+        
+        {
+            "name": "Python: AdaptiveTFLearningHumanoidLocation",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--task", "HumanoidLocation", "--headless", "--num_envs", "1024", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location_dr_for_tfl_adaptive.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_hrl_humanoid_location.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy"]
+        },
+        
         {
             "name": "Python: ArchitecturalTFLearningHumanoidAMPGetup",
             "type": "python",
@@ -71,7 +101,17 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "args": ["--test", "--task", "HumanoidAMPGetup", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_00229050.pth"]
+            "args": ["--test", "--task", "HumanoidAMPGetup", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup_eval.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_00229050.pth"]
+        },
+
+        {
+            "name": "Python: AdaptiveTFLearningHumanoidAMPGetupEval",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidAMPGetup", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup_eval.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth"]
         },
 
         {
