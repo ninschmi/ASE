@@ -152,8 +152,12 @@ class Humanoid(BaseTask):
         return num_actors
 
     def get_scale_factors(self):
-        scale_arm = to_torch(np.array(self._scale_arm)[self.env_char_mapping], requires_grad=False)
-        scale_leg = to_torch(np.array(self._scale_leg)[self.env_char_mapping], requires_grad=False)
+        if self.randomize:
+            scale_arm = to_torch(np.array(self._scale_arm)[self.env_char_mapping], requires_grad=False)
+            scale_leg = to_torch(np.array(self._scale_leg)[self.env_char_mapping], requires_grad=False)
+        else:
+            scale_arm = to_torch(np.full((self.num_envs,),self._scale_arm), requires_grad=False)
+            scale_leg = to_torch(np.full((self.num_envs,),self._scale_leg), requires_grad=False)
         return torch.stack([scale_arm, scale_leg], dim=-1)
 
     def create_sim(self):

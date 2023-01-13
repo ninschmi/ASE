@@ -315,7 +315,6 @@ class ASEBuilder(amp_network_builder.AMPBuilder):
         def train(self, mode=True):
             super().train(mode)
             if mode and self.mlp_correct:
-                self.toggle = not self.toggle
                 self.actor_corr_mlp.requires_grad_(self.toggle)
                 self.critic_corr_mlp.requires_grad_(not self.toggle)
                 
@@ -326,6 +325,11 @@ class ASEBuilder(amp_network_builder.AMPBuilder):
                     [layer.requires_grad_(self.toggle) for layer in self.logits_corr]
                 if self.is_continuous:
                     self.mu_corr.requires_grad_(self.toggle)
+        
+        def switch_training(self):
+            self.toggle = not self.toggle
+
+            return
 
     def build(self, name, **kwargs):
         net = ASEBuilder.Network(self.params, **kwargs)
