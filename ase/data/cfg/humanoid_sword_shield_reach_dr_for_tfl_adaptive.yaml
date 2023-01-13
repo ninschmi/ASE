@@ -42,7 +42,7 @@ env:
 task:
     randomize: True
     adaptiveSampling: True
-    weightsPath: "/local/home/ninschmi/ASE/evaluation_uniform-trained/reach_evalution_uniform-trained"
+    weightsPath: "/local/home/ninschmi/ASE/reach_evalution_uniform-trained"
 
 sim:
   substeps: 2
