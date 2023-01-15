@@ -76,4 +76,4 @@ params:
 
     llc_steps: 5
     llc_config: ase/data/cfg/train/rlg/modified_ase_humanoid_hrl.yaml
-    #llc_checkpoint: "ase/data/models/Humanoid_TF_Learning_DR_....pth"
+    llc_checkpoint: "ase/data/models/ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_00229050.pth"
