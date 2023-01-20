@@ -20,8 +20,9 @@ if eval == 0:
     # UNIFORM
     #command = "python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_Reach_00018550.pth --headless"
     # ADAPTIVE SAMPLING
-    command = "python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_Reach_00018550.pth --headless"
-
+    #command = "python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_Reach_00018550.pth --headless"
+    # ARCHITECTURE
+    command = "python ase/run.py --test --task HumanoidReach --cfg_env ase/data/cfg/humanoid_sword_shield_reach_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/modified_tfl_hrl_humanoid_reach.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_Reach_00018550.pth --headless"
 elif eval ==1 :
     cfg_fn = "ase/data/cfg/humanoid_sword_shield_location_eval_param.yaml"
     # PRE_TRAIN
@@ -29,7 +30,9 @@ elif eval ==1 :
     # UNIFORM
     #command = "python ase/run.py --test --task HumanoidLocation --cfg_env ase/data/cfg/humanoid_sword_shield_location_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_Location_00017900.pth --headless"
     # ADAPTIVE SAMPLING
-    command = "python ase/run.py --test --task HumanoidLocation --cfg_env ase/data/cfg/humanoid_sword_shield_location_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_Location_00017900.pth --headless"
+    #command = "python ase/run.py --test --task HumanoidLocation --cfg_env ase/data/cfg/humanoid_sword_shield_location_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/hrl_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_Location_00017900.pth --headless"
+    # ARCHITECTURE
+    command = "python ase/run.py --test --task HumanoidLocation --cfg_env ase/data/cfg/humanoid_sword_shield_location_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/modified_tfl_hrl_humanoid_location.yaml --motion_file ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy --llc_checkpoint ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_00229050.pth --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_Location_00017900.pth --headless"
 else:
     cfg_fn = "ase/data/cfg/humanoid_ase_sword_shield_getup_eval_param.yaml"
     # PRE-TRAIN
@@ -37,8 +40,9 @@ else:
     # UNIFORM
     #command = "python ase/run.py --test --task HumanoidAMPGetup --cfg_env ase/data/cfg/humanoid_ase_sword_shield_getup_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/ase_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml --checkpoint ase/data/models/Humanoid_TF_Learning_DR_00229050.pth --headless"
     # ADAPTIVE SAMPLING
-    command = "python ase/run.py --test --task HumanoidAMPGetup --cfg_env ase/data/cfg/humanoid_ase_sword_shield_getup_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/ase_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth --headless"
-
+    #command = "python ase/run.py --test --task HumanoidAMPGetup --cfg_env ase/data/cfg/humanoid_ase_sword_shield_getup_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/ase_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth --headless"
+    # ARCHITECTURE
+    command = "python ase/run.py --test --task HumanoidAMPGetup --cfg_env ase/data/cfg/humanoid_ase_sword_shield_getup_eval_param.yaml --cfg_train ase/data/cfg/train/rlg/modified_tfl_ase_humanoid.yaml --motion_file ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml --checkpoint ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_00229050.pth --headless"
 for file in files:
     if(os.path.isfile(path + file)):
         #modify mujoco file
