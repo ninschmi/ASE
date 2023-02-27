@@ -146,11 +146,6 @@ env_upper = gymapi.Vec3(spacing, spacing, spacing)
 #lower = gymapi.Vec3(-spacing, -spacing, 0.0)
 #upper = gymapi.Vec3(spacing, spacing, spacing)
 
-# position the camera
-cam_pos = gymapi.Vec3(17.2, 2.0, 10)
-cam_target = gymapi.Vec3(5, -2.5, 13)
-gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
-
 # cache useful handles
 envs = []
 actor_handles = []
@@ -159,6 +154,10 @@ num_envs = 35
 
 num_per_row = 7
 
+base_col = np.array([0.4, 0.4, 0.4])
+range_col = np.array([0.0706, 0.149, 0.2863])
+range_sum = np.linalg.norm(range_col)
+color_vector = np.empty((num_envs,3))
 
 for i, asset in enumerate(assets):
 
@@ -174,12 +173,34 @@ for i, asset in enumerate(assets):
     # add actor
     pose = gymapi.Transform()
     pose.p = gymapi.Vec3(pose_list[0], pose_list[1], (pose_list[2]/1*0.89))
-    pose.r = gymapi.Quat(0.0, 0.0, 0.0, 1.0)
+    pose.r = gymapi.Quat(0.0, 0.0, 1.0, 0.0)
 
     actor_handle = gym.create_actor(env, asset, pose, "humanoid", i, 1)
     actor_handles.append(actor_handle)
 
     gym.set_actor_scale(env, actor_handle, 1)
+    gym.set_light_parameters(sim, 0, gymapi.Vec3(1,1,1), gymapi.Vec3(0,0,0), gymapi.Vec3(-0.7,0,1))
+
+    rand_col = np.random.uniform(0.0, 1.0, size=3)
+    rand_col = range_sum * rand_col / np.linalg.norm(rand_col)
+    rand_col += base_col
+    color_vector[i] = rand_col
+
+    num_bodies = gym.get_asset_rigid_body_count(asset)
+
+    for j in range(num_bodies):
+        gym.set_rigid_body_color(env, actor_handle, j, gymapi.MESH_VISUAL,
+                                              gymapi.Vec3(rand_col[0], rand_col[1], rand_col[2]))
+
+np.savetxt("/local/home/ninschmi/images_sa/sampling_images/all_char_color.txt", color_vector)
+
+# position the camera
+cam_pos = gymapi.Vec3(5.0, 00.0,2)
+cam_target = gymapi.Vec3(0, 0, 1)
+gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
+
+flag = True
+counter = 0
 
 while not gym.query_viewer_has_closed(viewer):
     # step the physics
@@ -193,6 +214,13 @@ while not gym.query_viewer_has_closed(viewer):
     # Wait for dt to elapse in real time.
     # This synchronizes the physics simulation with the rendering rate.
     gym.sync_frame_time(sim)
+    if flag:
+    ##    filename = asset_desc.file_name.split("/")[1]
+    ##    filename = filename.split(".")[0] + ".png"
+
+        gym.write_viewer_image_to_file(viewer, "/local/home/ninschmi/images_sa/sampling_images/all_char_color/" + str(counter) + ".png")
+        counter += 1
+    ##flag = False
 
 print("Done")
 

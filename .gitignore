@@ -13,3 +13,6 @@ evaluation_pre-trained/
 evaluation_uniform-trained/
 evaluation_adaptive-sampling-trained/
 evaluation_architecture-trained/
+evaluation_architecture-trained_OLD/
+getup_evaluation_architecture-trained_INTER/
+getup_evaluation_architecture-trained_PRE/

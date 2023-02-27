@@ -105,6 +105,8 @@ class BaseTask():
             self.gym.viewer_camera_look_at(
                 self.viewer, None, cam_pos, cam_target)
 
+        #self.counter = 0
+
     # set gravity based on up axis and return axis index
     def set_sim_params_up_axis(self, sim_params, axis):
         if axis == 'z':
@@ -169,6 +171,9 @@ class BaseTask():
                 self.gym.draw_viewer(self.viewer, self.sim, True)
             else:
                 self.gym.poll_viewer_events(self.viewer)
+
+            #self.gym.write_viewer_image_to_file(self.viewer, "/local/home/ninschmi/images_sa/out-of-distribution/" + str(self.counter) + ".png")
+            #self.counter += 1
 
     def get_actor_params_info(self, dr_params, env):
         """Returns a flat array of actor params, their names and ranges."""

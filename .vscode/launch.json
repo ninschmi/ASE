@@ -105,6 +105,26 @@
         },
 
         {
+            "name": "Python: TFLearningHumanoidReachEval",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--num_envs", "4", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_hrl_humanoid_reach.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_Reach_00018550.pth"]
+        },
+
+        {
+            "name": "Python: TFLearningHumanoidLocationEval",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidLocation", "--num_envs", "4", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_hrl_humanoid_location.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_Location_00017900.pth"]
+        },
+
+        {
             "name": "Python: AdaptiveTFLearningHumanoidAMPGetupEval",
             "type": "python",
             "request": "launch",
@@ -112,6 +132,26 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--test", "--task", "HumanoidAMPGetup", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup_eval.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_00229050.pth"]
+        },
+
+        {
+            "name": "Python: AdaptiveTFLearningHumanoidReachEval",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_hrl_humanoid_reach.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_Reach_00018550.pth"]
+        },
+
+        {
+            "name": "Python: AdaptiveTFLearningHumanoidLocationEval",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidLocation", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_hrl_humanoid_location.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_Location_00017900.pth"]
         },
 
         {
@@ -185,6 +225,16 @@
         },
 
         {
+            "name": "Python: HumanoidReachDR",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "ase/data/models/ase_hlc_reach_reallusion_sword_shield.pth"]
+        },
+
+        {
             "name": "Python: HumanoidLocation",
             "type": "python",
             "request": "launch",
@@ -192,6 +242,16 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--test", "--task", "HumanoidLocation", "--num_envs", "16", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "ase/data/models/ase_hlc_location_reallusion_sword_shield.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidLocationDR",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidLocation", "--num_envs", "35", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location_dr_for_tfl.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "ase/data/models/ase_hlc_location_reallusion_sword_shield.pth"]
         },
 
         {
@@ -222,6 +282,66 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": ["--test", "--task", "HumanoidReach", "--num_envs", "16", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach_eval.yaml", "--cfg_train", "ase/data/cfg/train/rlg/hrl_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth", "--checkpoint", "output/Humanoid_15-15-25-42/nn/Humanoid.pth", "--headless"]
-        }
+        },
+
+        {
+            "name": "Python: HumanoidAMPGetupVideo1.1",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidAMPGetup", "--num_envs", "2", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_00229050.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidAMPGetupVideo1.2",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidAMPGetup", "--num_envs", "2", "--cfg_env", "ase/data/cfg/humanoid_ase_sword_shield_getup.yaml", "--cfg_train", "ase/data/cfg/train/rlg/modified_tfl_ase_humanoid.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/dataset_reallusion_sword_shield.yaml", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_00229050.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidReachVideo2.1",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--num_envs", "2", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach.yaml", "--cfg_train", "ase/data/cfg/train/rlg/adaptive_tfl_hrl_humanoid_reach.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ADAPTIVE_Reach_00018550.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidReachVideo2.2",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidReach", "--num_envs", "2", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_reach.yaml", "--cfg_train", "ase/data/cfg/train/rlg/modified_tfl_hrl_humanoid_reach.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy", "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_Reach_00018550.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidLocationVideo3.1",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidLocation", "--num_envs", "2", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location.yaml", "--cfg_train", "ase/data/cfg/train/rlg/tfl_hrl_humanoid_location.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy",  "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_Location_00017900.pth"]
+        },
+
+        {
+            "name": "Python: HumanoidLocationVideo3.2",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": ["--test", "--task", "HumanoidLocation", "--num_envs", "2", "--cfg_env", "ase/data/cfg/humanoid_sword_shield_location.yaml", "--cfg_train", "ase/data/cfg/train/rlg/modified_tfl_hrl_humanoid_location.yaml", "--motion_file", "ase/data/motions/reallusion_sword_shield/RL_Avatar_Idle_Ready_Motion.npy",  "--checkpoint", "ase/data/models/Humanoid_TF_Learning_DR_ARCHITECTURE_Location_00017900.pth"]
+        },
     ]
 }

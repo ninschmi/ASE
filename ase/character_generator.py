@@ -14,8 +14,10 @@ filename = 'data/assets/mjcf/amp_humanoid_sword_shield.xml'
 #factors_leg = np.random.uniform(low=0.5, high=2, size=3)
 #factors_arm = np.random.uniform(low=0.5, high=1.5, size=3)
 # out of distribution samples
-factors_leg = np.concatenate((np.random.uniform(low=0.1, high=0.5, size=1),np.random.uniform(low=1.5, high=2, size=1),np.random.uniform(low=2, high=2.5, size=1)))
-factors_arm = np.concatenate((np.random.uniform(low=0.1, high=0.5, size=1),np.random.uniform(low=1.5, high=2, size=1)))
+#factors_leg = np.concatenate((np.random.uniform(low=0.1, high=0.5, size=1),np.random.uniform(low=1.5, high=2, size=1),np.random.uniform(low=2, high=2.5, size=1)))
+#factors_arm = np.concatenate((np.random.uniform(low=0.1, high=0.5, size=1),np.random.uniform(low=1.5, high=2, size=1)))
+factors_leg = np.array([0.25, 2, 2.25,])
+factors_arm = np.array([0.25, 0.5, 2])
 
 
 # leg length vs. arm length shape parameterization
